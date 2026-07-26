@@ -1,27 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { useMenu } from "@/context/MenuContext";
+import type { User } from "@supabase/supabase-js";
 
 export default function AdminDashboard() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [password, setPassword] = useState("");
-  const { menuData, categories, addMenuItem, updateMenuItem, deleteMenuItem } = useMenu();
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  const { menuData, categories, addMenuItem, updateMenuItem, deleteMenuItem, isLoading } = useMenu();
 
   const [activeBrand, setActiveBrand] = useState(categories[0] || "");
   const [editingItem, setEditingItem] = useState<{ subCat: string; index: number } | null>(null);
   const [editForm, setEditForm] = useState({ name: "", price: 0 });
-
   const [isAdding, setIsAdding] = useState(false);
   const [addForm, setAddForm] = useState({ subCat: "", name: "", price: 0 });
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === "admin123") {
-      setIsAuthenticated(true);
-    } else {
-      alert("Password salah!");
+  // ── Proteksi halaman: cek sesi Supabase ─────────────────────────────────
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+      if (!currentUser) {
+        router.replace("/admin/login");
+        return;
+      }
+      setUser(currentUser);
+      setAuthLoading(false);
+    };
+
+    checkSession();
+
+    // Dengarkan perubahan sesi (logout dari tab lain, token kadaluarsa, dsb.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        router.replace("/admin/login");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [router]);
+
+  // Sinkronkan activeBrand saat categories terisi dari Supabase
+  useEffect(() => {
+    if (categories.length > 0 && !activeBrand) {
+      setActiveBrand(categories[0]);
     }
+  }, [categories, activeBrand]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.replace("/admin/login");
   };
 
   const handleSaveEdit = (subCat: string, index: number) => {
@@ -39,28 +71,17 @@ export default function AdminDashboard() {
     setAddForm({ subCat: "", name: "", price: 0 });
   };
 
-  if (!isAuthenticated) {
+  // Tampilkan loading saat cek auth atau data sedang dimuat
+  if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#121212] p-4 text-crema-50">
-        <form onSubmit={handleLogin} className="bg-[#151515] p-8 rounded-2xl border border-amber-bistro/30 shadow-[0_0_40px_rgba(212,146,78,0.1)] w-full max-w-md">
-          <h1 className="text-2xl font-bold text-amber-bistro tracking-widest text-center mb-6 uppercase">Admin Login</h1>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-crema-300 mb-2">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-[#1A1A1A] border border-white/10 rounded-lg px-4 py-2 text-crema-50 focus:outline-none focus:border-amber-bistro transition-colors"
-              placeholder="Masukkan password admin"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-amber-bistro text-[#121212] font-bold py-2 px-4 rounded-lg hover:bg-amber-bistro/90 transition-colors uppercase tracking-widest text-sm"
-          >
-            Login
-          </button>
-        </form>
+      <div className="min-h-screen flex items-center justify-center bg-[#121212]">
+        <div className="flex flex-col items-center gap-3">
+          <svg className="animate-spin h-8 w-8 text-amber-bistro" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <p className="text-crema-300/50 text-sm tracking-widest uppercase">Memeriksa sesi...</p>
+        </div>
       </div>
     );
   }
@@ -70,20 +91,28 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-[#121212] text-crema-50 p-4 sm:p-8 font-sans">
       <div className="max-w-6xl mx-auto">
+        {/* ── Header ── */}
         <header className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-amber-bistro tracking-widest uppercase">Admin Dashboard</h1>
-            <p className="text-crema-300 mt-2">Kelola data menu GTC Coffee & Bistro</p>
+            <h1 className="text-3xl font-bold text-amber-bistro tracking-widest uppercase">
+              Admin Dashboard
+            </h1>
+            <p className="text-crema-300/60 mt-1 text-sm">
+              Login sebagai: <span className="text-crema-300">{user?.email}</span>
+            </p>
           </div>
           <button
-            onClick={() => setIsAuthenticated(false)}
-            className="text-sm font-medium text-crema-300 hover:text-white transition-colors"
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-sm font-medium text-crema-300 hover:text-red-400 transition-colors border border-white/10 hover:border-red-400/30 px-3 py-1.5 rounded-lg"
           >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+            </svg>
             Logout
           </button>
         </header>
 
-        {/* Brand Tabs */}
+        {/* ── Brand Tabs ── */}
         <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden border-b border-crema-50/10 mb-8 pb-2 gap-2">
           {categories.map((brand) => (
             <button
@@ -100,7 +129,7 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Content Area */}
+        {/* ── Content Area ── */}
         <div className="bg-[#151515] border border-white/5 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold tracking-widest uppercase">{activeBrand}</h2>
@@ -112,9 +141,12 @@ export default function AdminDashboard() {
             </button>
           </div>
 
+          {/* ── Add Form ── */}
           {isAdding && (
             <div className="mb-8 p-4 bg-[#1A1A1A] border border-amber-bistro/30 rounded-xl">
-              <h3 className="text-sm font-bold text-amber-bistro mb-4 uppercase tracking-wider">Menu Baru</h3>
+              <h3 className="text-sm font-bold text-amber-bistro mb-4 uppercase tracking-wider">
+                Menu Baru
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <div>
                   <label className="block text-xs text-crema-300 mb-1">Sub-Kategori</label>
@@ -164,7 +196,16 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {Object.entries(subCategories).length === 0 ? (
+          {/* ── Menu Loading ── */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16 gap-3 text-crema-300/50">
+              <svg className="animate-spin h-5 w-5 text-amber-bistro" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <span className="text-sm tracking-wider">Memuat data menu dari Supabase...</span>
+            </div>
+          ) : Object.entries(subCategories).length === 0 ? (
             <p className="text-crema-300 text-center py-8">Belum ada menu di kategori ini.</p>
           ) : (
             <div className="space-y-8">
@@ -184,7 +225,8 @@ export default function AdminDashboard() {
                       </thead>
                       <tbody className="divide-y divide-white/5">
                         {items.map((item, idx) => {
-                          const isEditing = editingItem?.subCat === subCat && editingItem?.index === idx;
+                          const isEditing =
+                            editingItem?.subCat === subCat && editingItem?.index === idx;
                           return (
                             <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
                               <td className="py-3 pr-4">
@@ -192,7 +234,9 @@ export default function AdminDashboard() {
                                   <input
                                     type="text"
                                     value={editForm.name}
-                                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                    onChange={(e) =>
+                                      setEditForm({ ...editForm, name: e.target.value })
+                                    }
                                     className="w-full bg-[#121212] border border-white/20 rounded px-2 py-1 focus:border-amber-bistro outline-none"
                                   />
                                 ) : (
@@ -204,7 +248,9 @@ export default function AdminDashboard() {
                                   <input
                                     type="number"
                                     value={editForm.price}
-                                    onChange={(e) => setEditForm({ ...editForm, price: Number(e.target.value) })}
+                                    onChange={(e) =>
+                                      setEditForm({ ...editForm, price: Number(e.target.value) })
+                                    }
                                     className="w-24 bg-[#121212] border border-white/20 rounded px-2 py-1 focus:border-amber-bistro outline-none font-mono"
                                   />
                                 ) : (
@@ -240,7 +286,7 @@ export default function AdminDashboard() {
                                     </button>
                                     <button
                                       onClick={() => {
-                                        if (confirm(`Yakin ingin menghapus ${item.name}?`)) {
+                                        if (confirm(`Yakin ingin menghapus "${item.name}"?`)) {
                                           deleteMenuItem(activeBrand, subCat, idx);
                                         }
                                       }}
