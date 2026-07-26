@@ -204,26 +204,28 @@ function CategoryCard({ category, index, isSelected, onSelect, panelId }: CardPr
           </span>
         </div>
 
-        {/* Blok info kartu — tinggi tetap, tidak pernah meluas saat di-hover */}
-        {/* flex-1: mengisi sisa tinggi kartu setelah gambar.
-           * min-h-[5.5rem]: memastikan blok teks (nama + deskripsi) selalu
-           * sejajar lurus antar kartu meski panjang nama brand berbeda-beda. */}
-        <div className="flex flex-1 flex-col gap-1.5 bg-espresso-800 px-4 py-4 min-h-[5.5rem] transition-colors duration-300 group-hover:bg-espresso-700">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-sans text-sm font-semibold tracking-wide text-crema-50">
+        {/* Blok info kartu — flex-1 mengisi sisa tinggi setelah gambar.
+           * justify-between: judul selalu di atas, deskripsi selalu di bawah.
+           * min-h-[5.5rem]: baseline seragam meski nama brand panjang/pendek. */}
+        <div className="flex flex-1 flex-col justify-between bg-espresso-800 px-4 py-4 min-h-[5.5rem] transition-colors duration-300 group-hover:bg-espresso-700">
+          {/* Baris atas: nama brand + chevron — min-h-[2.5rem] & items-start
+              memastikan baris ini tidak kolaps saat nama brand wrap ke 2 baris */}
+          <div className="flex min-h-[2.5rem] items-start justify-between gap-2">
+            <span className="font-sans text-sm font-semibold tracking-wide text-crema-50 leading-snug">
               {category.name}
             </span>
-            {/* Indikator terpilih — memutar panah (hanya transform) */}
+            {/* Indikator terpilih — memutar panah (hanya transform). JANGAN UBAH. */}
             <svg
               viewBox="0 0 16 16"
               fill="none"
-              className={`h-4 w-4 shrink-0 text-amber-bistro transition-transform duration-300 ${isSelected ? "rotate-90" : "rotate-0"}`}
+              className={`mt-0.5 h-4 w-4 shrink-0 text-amber-bistro transition-transform duration-300 ${isSelected ? "rotate-90" : "rotate-0"}`}
               aria-hidden="true"
             >
               <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <p className="font-sans text-xs leading-relaxed text-crema-300/65 line-clamp-2">
+          {/* Deskripsi selalu di bawah karena justify-between pada parent */}
+          <p className="font-sans text-xs leading-relaxed text-crema-300/65 line-clamp-2 mt-1.5">
             {category.teaser}
           </p>
         </div>
@@ -428,8 +430,9 @@ export function MenuCategoryTabs({ categories }: MenuCategoryTabsProps) {
               "flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2",
               /* Sembunyikan bilah gulir dekoratif tanpa memblokir fungsi gulir */
               "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
-              /* Tablet: beralih ke grid 2→3 kolom */
-              "sm:grid sm:grid-cols-2 sm:overflow-x-visible sm:pb-0 sm:snap-none",
+              /* Tablet: beralih ke grid 2→3 kolom.
+               * items-stretch: paksa semua sel grid sama tinggi (tinggi sel terbesar). */
+              "sm:grid sm:grid-cols-2 sm:items-stretch sm:overflow-x-visible sm:pb-0 sm:snap-none",
               /* Mid-tablet: 3 kolom */
               "md:grid-cols-3",
               /* Desktop: semua 6 brand card dalam satu baris */
@@ -440,9 +443,9 @@ export function MenuCategoryTabs({ categories }: MenuCategoryTabsProps) {
               <div
                 key={category.id}
                 /* Mobile: kartu snap lebar tetap; tablet/desktop: otomatis.
-                 * flex flex-col h-full diperlukan agar kartu mengisi tinggi
-                 * sel grid secara merata (equal-height) di semua breakpoint. */
-                className="shrink-0 w-[78vw] snap-start sm:w-auto sm:snap-align-none flex flex-col h-full"
+                 * flex-1 flex flex-col h-full: rantai tinggi tidak terputus dari
+                 * sel grid → wrapper → m.div → button → info block. */
+                className="shrink-0 w-[78vw] snap-start sm:w-auto sm:snap-align-none flex flex-1 flex-col h-full"
               >
                 <CategoryCard
                   category={category}
