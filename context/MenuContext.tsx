@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { supabase } from "@/lib/supabase";
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * Dataset master GTC — harga dalam integer (Rupiah).
@@ -256,48 +257,166 @@ const INITIAL_MENU_DATA: Record<string, Record<string, { name: string; price: nu
   },
 };
 
-type MenuData = typeof INITIAL_MENU_DATA;
+export type MenuItemDB = {
+  id?: number;
+  brand: string;
+  sub_category: string;
+  name: string;
+  price: number;
+};
+
+type MenuData = Record<string, Record<string, MenuItemDB[]>>;
 type MenuItem = { name: string; price: number };
 
 interface MenuContextType {
   menuData: MenuData;
   categories: string[];
-  addMenuItem: (brand: string, subCat: string, item: MenuItem) => void;
-  updateMenuItem: (brand: string, subCat: string, index: number, item: MenuItem) => void;
-  deleteMenuItem: (brand: string, subCat: string, index: number) => void;
+  addMenuItem: (brand: string, subCat: string, item: MenuItem) => Promise<void>;
+  updateMenuItem: (brand: string, subCat: string, index: number, item: MenuItem) => Promise<void>;
+  deleteMenuItem: (brand: string, subCat: string, index: number) => Promise<void>;
   addSubCategory: (brand: string, subCat: string) => void;
+  isLoading: boolean;
 }
 
 const MenuContext = createContext<MenuContextType | undefined>(undefined);
 
 export function MenuProvider({ children }: { children: ReactNode }) {
-  const [menuData, setMenuData] = useState<MenuData>(INITIAL_MENU_DATA);
+  const [menuData, setMenuData] = useState<MenuData>({});
+  const [isLoading, setIsLoading] = useState(true);
 
-  const categories = Object.keys(menuData);
+  // Default categories to show tabs even when empty
+  const categories = Object.keys(INITIAL_MENU_DATA);
 
-  const addMenuItem = (brand: string, subCat: string, item: MenuItem) => {
-    setMenuData((prev) => {
-      const newData = { ...prev };
-      if (!newData[brand]) newData[brand] = {};
-      if (!newData[brand][subCat]) newData[brand][subCat] = [];
-      newData[brand][subCat] = [...newData[brand][subCat], item];
-      return newData;
-    });
+  useEffect(() => {
+    async function loadData() {
+      setIsLoading(true);
+      const { data, error } = await supabase.from("menu_items").select("*");
+      
+      if (error) {
+        console.error("Error fetching menu data", error);
+        // Fallback to initial data if table doesn't exist yet
+        organizeData(getSeedData());
+        setIsLoading(false);
+        return;
+      }
+      
+      if (!data || data.length === 0) {
+        // Seed
+        const seedData = getSeedData();
+        const { data: inserted, error: insertError } = await supabase.from("menu_items").insert(seedData).select();
+        
+        if (insertError) {
+          console.error("Error seeding data", insertError);
+          organizeData(seedData); // fallback to local
+        } else if (inserted) {
+          organizeData(inserted as MenuItemDB[]);
+        }
+      } else {
+        organizeData(data as MenuItemDB[]);
+      }
+      setIsLoading(false);
+    }
+    
+    loadData();
+  }, []);
+
+  function getSeedData(): MenuItemDB[] {
+    const seedData: MenuItemDB[] = [];
+    for (const [brand, subCats] of Object.entries(INITIAL_MENU_DATA)) {
+      for (const [subCat, items] of Object.entries(subCats)) {
+        for (const item of items) {
+          seedData.push({
+            brand,
+            sub_category: subCat,
+            name: item.name,
+            price: item.price
+          });
+        }
+      }
+    }
+    return seedData;
+  }
+
+  function organizeData(data: MenuItemDB[]) {
+    const formatted: MenuData = {};
+    // ensure brands from INITIAL_MENU_DATA exist to keep tabs orderly
+    Object.keys(INITIAL_MENU_DATA).forEach(b => formatted[b] = {});
+    
+    for (const row of data) {
+      if (!formatted[row.brand]) formatted[row.brand] = {};
+      if (!formatted[row.brand][row.sub_category]) formatted[row.brand][row.sub_category] = [];
+      formatted[row.brand][row.sub_category].push(row);
+    }
+    
+    // Sort items by id or name if needed, assuming insertion order is fine
+    setMenuData(formatted);
+  }
+
+  const addMenuItem = async (brand: string, subCat: string, item: MenuItem) => {
+    const newItem = { brand, sub_category: subCat, name: item.name, price: item.price };
+    const { data, error } = await supabase.from("menu_items").insert([newItem]).select();
+    
+    if (error) {
+      alert("Gagal menambah menu ke database: " + error.message);
+      return;
+    }
+    
+    if (data && data[0]) {
+      setMenuData((prev) => {
+        const newData = { ...prev };
+        if (!newData[brand]) newData[brand] = {};
+        if (!newData[brand][subCat]) newData[brand][subCat] = [];
+        newData[brand][subCat] = [...newData[brand][subCat], data[0] as MenuItemDB];
+        return newData;
+      });
+    }
   };
 
-  const updateMenuItem = (brand: string, subCat: string, index: number, item: MenuItem) => {
+  const updateMenuItem = async (brand: string, subCat: string, index: number, item: MenuItem) => {
+    const existing = menuData[brand]?.[subCat]?.[index];
+    if (!existing || !existing.id) {
+      alert("ID item tidak ditemukan, tidak bisa diupdate ke database.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("menu_items")
+      .update({ name: item.name, price: item.price })
+      .eq("id", existing.id);
+
+    if (error) {
+      alert("Gagal mengupdate menu: " + error.message);
+      return;
+    }
+
     setMenuData((prev) => {
       const newData = { ...prev };
       if (newData[brand] && newData[brand][subCat]) {
         const newItems = [...newData[brand][subCat]];
-        newItems[index] = item;
+        newItems[index] = { ...newItems[index], name: item.name, price: item.price };
         newData[brand][subCat] = newItems;
       }
       return newData;
     });
   };
 
-  const deleteMenuItem = (brand: string, subCat: string, index: number) => {
+  const deleteMenuItem = async (brand: string, subCat: string, index: number) => {
+    const existing = menuData[brand]?.[subCat]?.[index];
+    if (!existing || !existing.id) {
+      alert("ID item tidak ditemukan, tidak bisa dihapus dari database.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("menu_items")
+      .delete()
+      .eq("id", existing.id);
+
+    if (error) {
+      alert("Gagal menghapus menu: " + error.message);
+      return;
+    }
+
     setMenuData((prev) => {
       const newData = { ...prev };
       if (newData[brand] && newData[brand][subCat]) {
@@ -311,7 +430,7 @@ export function MenuProvider({ children }: { children: ReactNode }) {
 
   const addSubCategory = (brand: string, subCat: string) => {
     setMenuData((prev) => {
-      if (prev[brand] && prev[brand][subCat]) return prev; // already exists
+      if (prev[brand] && prev[brand][subCat]) return prev;
       const newData = { ...prev };
       if (!newData[brand]) newData[brand] = {};
       newData[brand][subCat] = [];
@@ -320,7 +439,7 @@ export function MenuProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <MenuContext.Provider value={{ menuData, categories, addMenuItem, updateMenuItem, deleteMenuItem, addSubCategory }}>
+    <MenuContext.Provider value={{ menuData, categories, addMenuItem, updateMenuItem, deleteMenuItem, addSubCategory, isLoading }}>
       {children}
     </MenuContext.Provider>
   );
