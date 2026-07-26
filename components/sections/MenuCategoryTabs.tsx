@@ -364,7 +364,12 @@ export function MenuCategoryTabs({ categories }: MenuCategoryTabsProps) {
   };
 
   const handleOpenFullMenu = (categoryName: string) => {
-    setActiveCategory(categoryName);
+    /* Peta dari 6 nama kartu homepage ke 7 tab modal.
+     * "GOLDEN TELLER & CEMILAN" (kartu) → "GOLDEN TELLER" (tab modal). */
+    const CARD_TO_MODAL_TAB: Record<string, string> = {
+      "GOLDEN TELLER & CEMILAN": "GOLDEN TELLER",
+    };
+    setActiveCategory(CARD_TO_MODAL_TAB[categoryName] ?? categoryName);
     setIsMenuOpen(true);
   };
 
