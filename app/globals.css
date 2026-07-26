@@ -1,26 +1,104 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ─── Brand Design System ─────────────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Color palette — espresso-inspired, WCAG AA compliant on dark surfaces */
+  --color-espresso-950: #0f0e0c;
+  --color-espresso-900: #161512;
+  --color-espresso-800: #1e1b17;
+  --color-espresso-700: #2c281f;
+  --color-espresso-600: #3d372a;
+  --color-espresso-500: #6b5d48;
+
+  --color-crema-50:  #fdf8f2;
+  --color-crema-100: #f7eed9;
+  --color-crema-200: #ecdab8;
+  --color-crema-300: #d8b98a;
+  --color-crema-400: #c4975d;
+  --color-crema-500: #a97c42;
+
+  --color-amber-bistro: #d4924e;
+  --color-gold-accent:  #c8a96e;
+
+  /* Font stacks */
+  --font-serif: var(--font-playfair), "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-sans:  var(--font-inter),    "Inter",            system-ui, sans-serif;
+
+  /* Background / Foreground tokens */
+  --color-background: var(--color-espresso-950);
+  --color-foreground: var(--color-crema-50);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Global Reset & Base ────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-espresso-950);
+  color: var(--color-crema-50);
+  font-family: var(--font-sans);
+  min-height: 100dvh;
 }
+
+/* ─── Focus visible — accessible, brand-consistent ──────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-amber-bistro);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ─── Reduced-motion: suppress all animations globally ──────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── Hero aspect-ratio placeholder (guarantees CLS = 0) ────────────────── */
+.hero-aspect-shell {
+  /* 9:16 mobile → 10:4 desktop; using padding-top trick as fallback */
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  min-height: 580px;
+  max-height: 96svh;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .hero-aspect-shell {
+    aspect-ratio: 4 / 5;
+    min-height: 520px;
+    max-height: 100svh;
+  }
+}
+
+/* ─── Hours table — today row highlight (injected by TodayRowHighlighter) ── */
+.hours-today {
+  background-color: color-mix(in srgb, var(--color-amber-bistro) 8%, transparent);
+}
+
+.hours-today td,
+.hours-today th {
+  color: var(--color-crema-50);
+  font-weight: 500;
+}
+
+/* ─── Scrollbar suppression utility (used by MenuCategoryTabs scroll-snap) ── */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
