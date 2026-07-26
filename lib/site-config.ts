@@ -23,7 +23,7 @@ export const siteConfig = {
   },
   contact: {
     phone: "0858-4228-7195",
-    email: "hello@gtccoffeebistro.com",
+    email: "gtcmenejemen@gmail.com",
   },
   hours: [
     { day: "Senin", open: "10:00", close: "00:00" },

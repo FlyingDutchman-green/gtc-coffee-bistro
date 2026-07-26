@@ -125,7 +125,7 @@ function CategoryCard({ category, index, isSelected, onSelect, panelId }: CardPr
 
   return (
     <m.div
-      className="relative flex flex-col"
+      className="relative flex flex-col h-full"
       variants={cardVariant}
       initial={shouldReduce ? "visible" : "hidden"}
       whileInView="visible"
@@ -142,7 +142,8 @@ function CategoryCard({ category, index, isSelected, onSelect, panelId }: CardPr
         role="tab"
         onClick={(e) => onSelect(category.id, e)}
         className={[
-          "group relative flex flex-col overflow-hidden rounded-2xl text-left",
+          /* h-full: mengisi tinggi m.div agar semua kartu dalam satu baris grid sama tinggi */
+          "group relative flex flex-col overflow-hidden rounded-2xl text-left h-full",
           "ring-1 transition-shadow duration-300",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-bistro focus-visible:ring-offset-2 focus-visible:ring-offset-espresso-950",
           isSelected
@@ -204,7 +205,10 @@ function CategoryCard({ category, index, isSelected, onSelect, panelId }: CardPr
         </div>
 
         {/* Blok info kartu — tinggi tetap, tidak pernah meluas saat di-hover */}
-        <div className="flex flex-col gap-1.5 bg-espresso-800 px-4 py-4 transition-colors duration-300 group-hover:bg-espresso-700">
+        {/* flex-1: mengisi sisa tinggi kartu setelah gambar.
+           * min-h-[5.5rem]: memastikan blok teks (nama + deskripsi) selalu
+           * sejajar lurus antar kartu meski panjang nama brand berbeda-beda. */}
+        <div className="flex flex-1 flex-col gap-1.5 bg-espresso-800 px-4 py-4 min-h-[5.5rem] transition-colors duration-300 group-hover:bg-espresso-700">
           <div className="flex items-center justify-between gap-2">
             <span className="font-sans text-sm font-semibold tracking-wide text-crema-50">
               {category.name}
@@ -435,8 +439,10 @@ export function MenuCategoryTabs({ categories }: MenuCategoryTabsProps) {
             {categories.map((category, index) => (
               <div
                 key={category.id}
-                /* Mobile: kartu snap lebar tetap; tablet/desktop: otomatis */
-                className="shrink-0 w-[78vw] snap-start sm:w-auto sm:snap-align-none"
+                /* Mobile: kartu snap lebar tetap; tablet/desktop: otomatis.
+                 * flex flex-col h-full diperlukan agar kartu mengisi tinggi
+                 * sel grid secara merata (equal-height) di semua breakpoint. */
+                className="shrink-0 w-[78vw] snap-start sm:w-auto sm:snap-align-none flex flex-col h-full"
               >
                 <CategoryCard
                   category={category}
