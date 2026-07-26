@@ -426,12 +426,14 @@ export function MenuCategoryTabs({ categories }: MenuCategoryTabsProps) {
             role="tablist"
             aria-label="Menu categories"
             className={[
-              /* Ponsel: pita gulir snap-x horizontal dengan flex */
-              "flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2",
+              /* Ponsel: pita gulir snap-x horizontal dengan flex.
+               * items-stretch EKSPLISIT: paksa semua kartu sama tinggi
+               * mengikuti kartu tertinggi, baik di mode flex (mobile)
+               * maupun grid (tablet/desktop). */
+              "flex items-stretch snap-x snap-mandatory gap-4 overflow-x-auto pb-2",
               /* Sembunyikan bilah gulir dekoratif tanpa memblokir fungsi gulir */
               "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
-              /* Tablet: beralih ke grid 2→3 kolom.
-               * items-stretch: paksa semua sel grid sama tinggi (tinggi sel terbesar). */
+              /* Tablet: grid 2→3 kolom, items-stretch diteruskan otomatis */
               "sm:grid sm:grid-cols-2 sm:items-stretch sm:overflow-x-visible sm:pb-0 sm:snap-none",
               /* Mid-tablet: 3 kolom */
               "md:grid-cols-3",
@@ -443,9 +445,10 @@ export function MenuCategoryTabs({ categories }: MenuCategoryTabsProps) {
               <div
                 key={category.id}
                 /* Mobile: kartu snap lebar tetap; tablet/desktop: otomatis.
-                 * flex-1 flex flex-col h-full: rantai tinggi tidak terputus dari
-                 * sel grid → wrapper → m.div → button → info block. */
-                className="shrink-0 w-[78vw] snap-start sm:w-auto sm:snap-align-none flex flex-1 flex-col h-full"
+                 * h-full: isi penuh tinggi cross-axis yang sudah di-stretch
+                 * oleh items-stretch pada parent. flex-col meneruskan rantai
+                 * ke m.div dan button di dalamnya. */
+                className="shrink-0 w-[78vw] snap-start sm:w-auto sm:snap-align-none flex flex-col h-full"
               >
                 <CategoryCard
                   category={category}
