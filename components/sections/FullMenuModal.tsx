@@ -20,7 +20,7 @@ const GTC_MENU_DATA: Record<string, Record<string, { name: string; price: number
       { name: "MOURO HAZELNUT",                           price: 22000 },
       { name: "MOURO OAT MATCHA",                         price: 25000 },
       { name: "MOURO PANDAN",                             price: 22000 },
-      { name: "MOURO PISTACIO",                           price: 25000 },
+      { name: "MOURO PISTACIO",                           price: 25000 }
     ],
     "Cake & Ice Cream": [
       { name: "[PROMO] HOT DOG",                          price: 19000 },
@@ -28,16 +28,16 @@ const GTC_MENU_DATA: Record<string, Record<string, { name: string; price: number
       { name: "BURGER MIX",                               price: 24000 },
       { name: "CHIKEN SPICY",                             price: 25000 },
       { name: "ICE CREAM",                                price: 20000 },
-      { name: "MAC & CHEESE",                             price: 20000 },
+      { name: "MAC & CHEESE",                             price: 20000 }
     ],
     "Black Coffee": [
       { name: "AFFOGATO",                                 price: 21000 },
       { name: "AMERICANO",                                price: 15000 },
-      { name: "COFFEE LATTE",                             price: 21000 },
       { name: "ESPRESSO",                                 price: 12000 },
-      { name: "KOPI TUBRUK",                              price: 15000 },
       { name: "KOPI SANGER",                              price: 18000 },
+      { name: "KOPI TUBRUK",                              price: 15000 },
       { name: "VIETNAM DRIP",                             price: 18000 },
+      { name: "COFFEE LATTE",                             price: 21000 }
     ],
     "Other": [
       { name: "AIR MINERAL",                              price:  6000 },
@@ -45,18 +45,19 @@ const GTC_MENU_DATA: Record<string, Record<string, { name: string; price: number
       { name: "GREEN TEA",                                price: 12000 },
       { name: "JERUK",                                    price: 10000 },
       { name: "LEMON SPARKLING",                          price: 12000 },
+      { name: "LEMON TEA",                                price: 12000 },
       { name: "MELON SPARKLING",                          price: 12000 },
       { name: "ORANGE SPARKLING",                         price: 12000 },
+      { name: "PINK LAVA",                                price: 12000 },
       { name: "RED SPARKLING",                            price: 12000 },
       { name: "TEH",                                      price:  6000 },
-      { name: "THAI TEA",                                 price: 12000 },
-      { name: "LEMON TEA",                                price: 12000 },
+      { name: "THAI TEA",                                 price: 12000 }
     ],
     "Frutycano": [
       { name: "BERRY HONEY AMERICANO",                    price: 23000 },
       { name: "LIMEPRESSO",                               price: 21000 },
       { name: "TRIPLE PEACH AMERICANO",                   price: 24000 },
-      { name: "COCONUT BLACK",                            price: 19000 },
+      { name: "COCONUT BLACK",                            price: 19000 }
     ],
     "Milk Factory": [
       { name: "CHOCOLATTE",                               price: 20000 },
@@ -64,25 +65,25 @@ const GTC_MENU_DATA: Record<string, Record<string, { name: string; price: number
       { name: "MILOSAURUS",                               price: 21000 },
       { name: "OREO CREAMY LATTE",                        price: 21000 },
       { name: "REDVELVET",                                price: 20000 },
-      { name: "STRAWBERRY LATTE",                         price: 20000 },
+      { name: "STRAWBERRY LATTE",                         price: 20000 }
     ],
     "Matcha Base": [
       { name: "MATCHA CREAM CHEESE",                      price: 23000 },
       { name: "MATCHA ICE CREAM",                         price: 25000 },
-      { name: "MATCHA LATTE",                             price: 20000 },
-      { name: "MATCHA PISTACIO",                          price: 20000 },
+      { name: "MATCHA PISTACIO",                          price: 23000 },
       { name: "STRAWBERRY MATCHA",                        price: 23000 },
+      { name: "MATCHA LATTE",                             price: 20000 }
     ],
     "Taro": [
       { name: "TARO CREAM CHEESE",                        price: 20000 },
       { name: "TARO ICE CREAM",                           price: 23000 },
-      { name: "TARO LATTE",                               price: 18000 },
+      { name: "TARO LATTE",                               price: 18000 }
     ],
     "Lava Toast": [
       { name: "TOAST ICE CREAM",                          price: 26000 },
       { name: "TOAST MATCHA",                             price: 20000 },
-      { name: "TOAST MILO",                               price: 20000 },
-    ],
+      { name: "TOAST MILO",                               price: 20000 }
+    ]
   },
 
   /* ── RAMENIKU ──────────────────────────────────────────────────────────── */
@@ -172,36 +173,39 @@ const GTC_MENU_DATA: Record<string, Record<string, { name: string; price: number
     "Minuman": [
       { name: "Alpokat Kocok GTC",                        price: 16000 },
       { name: "Buah naga kocok GTC",                      price: 18000 },
+      { name: "Durian / Mix Alpokat GTC",                 price: 18000 },
       { name: "Durian Kocok GTC",                         price: 18000 },
       { name: "Jus Alpokat",                              price: 16000 },
       { name: "Jus Anggur",                               price: 16000 },
       { name: "Jus B. Naga",                              price: 15000 },
-      { name: "Jus Jambu",                                price: 14000 },
+      { name: "Jus Jambu",                                price: 15000 },
+      { name: "Jus Jeruk",                                price: 14000 },
       { name: "Jus Mangga",                               price: 16000 },
       { name: "Jus Melon",                                price: 15000 },
       { name: "Jus Nanas",                                price: 15000 },
       { name: "Jus Sirsak",                               price: 16000 },
       { name: "Jus Strawberry",                           price: 16000 },
       { name: "Mangga kocok GTC",                         price: 18000 },
-      { name: "Melon kocok GTC",                          price: 18000 },
+      { name: "Stroberi kocok GTC",                       price: 18000 },
       { name: "Strobery kocok GTC",                       price: 18000 },
-      { name: "Strobery kocok GTC Oreo",                  price: 18000 },
       { name: "Es Dawet",                                 price: 15000 },
       { name: "Es Dawet Durian",                          price: 18000 },
-      { name: "Jus Semangka",                             price: 15000 },
-      { name: "Jus Tomat",                                price: 15000 },
+      { name: "Jus Semangka",                             price: 15000 }
     ],
     "Pempek / Cemilan": [
-      { name: "Cireng Goreng",                            price: 15000 },
+      { name: "Bakso Goreng",                             price: 15000 },
       { name: "Kentang Goreng",                           price: 15000 },
+      { name: "Mix Plater",                               price: 18000 },
       { name: "Mix Platter",                              price: 18000 },
       { name: "Nuget ayam",                               price: 15000 },
-      { name: "Siomay goreng (Ikan tengiri)",             price: 16000 },
+      { name: "Siomay goreng (ikan tengiri)",             price: 16000 },
       { name: "Sosis goreng",                             price: 15000 },
-      { name: "Otak Otak",                                price: 14000 },
+      { name: "Kentang goreng",                           price: 15000 },
+      { name: "Mendoan",                                  price: 14000 },
       { name: "Pempek kapal selam GTC",                   price: 20500 },
-      { name: "Ssempolan ayam isi 5",                     price: 14000 },
-    ],
+      { name: "Sempolan ayam isi 5",                      price: 14000 },
+      { name: "Tahu Bakso",                               price: 16000 }
+    ]
   },
 
   /* ── EL NASGOR ─────────────────────────────────────────────────────────── */
@@ -229,32 +233,34 @@ const GTC_MENU_DATA: Record<string, Record<string, { name: string; price: number
     "Smoothie Bowl": [
       { name: "Berry Booster",                            price: 39000 },
       { name: "Pina Colada",                              price: 33000 },
-      { name: "Pink Dragon",                              price: 32000 },
+      { name: "Pink Dragon",                              price: 29000 },
       { name: "Tropical Green",                           price: 34000 },
       { name: "Tropical Twist",                           price: 28000 },
       { name: "UBE DELIGHT",                              price: 27000 },
-      { name: "Banana Fudge",                             price: 29000 },
-      { name: "Durian Mango",                             price: 28000 },
-      { name: "Tropical Island",                          price: 28000 },
+      { name: "Banana Fudge",                             price: 27000 },
+      { name: "Golden Durian",                            price: 29000 },
+      { name: "Golden Mango",                             price: 28000 },
+      { name: "Tropical Island",                          price: 28000 }
     ],
     "Dessert": [
       { name: "Cireng Ayam Suwir",                        price: 13000 },
       { name: "Dubai Pistachio Donut",                    price: 20000 },
       { name: "Risol Cokelat",                            price: 19000 },
       { name: "Wonton Goreng",                            price: 16000 },
-      { name: "Wonton Pedas Kunala Pistacio",             price: 36000 },
+      { name: "Wonton Pedas (Rebus)",                     price: 16000 },
       { name: "Berry Choco Kunafa Pistachio",             price: 36000 },
       { name: "Cireng Kuah Keju",                         price: 23000 },
       { name: "Dubai Tray Choco",                         price: 39000 },
       { name: "Mango Cloud Donut",                        price: 16000 },
       { name: "Singkong Balado",                          price: 15000 },
-      { name: "Strawberry Cloud Donut",                   price: 16000 },
+      { name: "STRAWBERRY CLOUD DONUT",                   price: 16000 }
     ],
     "Es Teler": [
-      { name: "Durian Ice Cream",                         price: 28000 },
+      { name: "Es Teller Durian",                         price: 28000 },
+      { name: "Es Teller Ice Cream",                      price: 28000 },
       { name: "Es Teler Keju",                            price: 23000 },
-      { name: "Es Teler Original",                        price: 18000 },
-    ],
+      { name: "Es Teller Original",                       price: 18000 }
+    ]
   },
 };
 
