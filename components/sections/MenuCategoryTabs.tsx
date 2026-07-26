@@ -36,6 +36,11 @@ import { useState, useId, useRef, useEffect } from "react";
 import Image from "next/image";
 import type { MenuCategory } from "@/lib/menu-data";
 import { FullMenuModal } from "./FullMenuModal";
+import { useMenu } from "@/context/MenuContext";
+
+const CARD_TO_MODAL_TAB: Record<string, string> = {
+  "GOLDEN TELLER & CEMILAN": "GOLDEN TELLER",
+};
 
 /* ── Konfigurasi animasi bersama (desain.md §2.1 baris MenuGrid) ─────────────────── */
 const VIEWPORT = { once: true, margin: "-50px" } as const;
@@ -118,9 +123,10 @@ interface CardProps {
   isSelected: boolean;
   onSelect: (id: string, e: React.MouseEvent) => void;
   panelId: string;
+  dynamicItemCount: number;
 }
 
-function CategoryCard({ category, index, isSelected, onSelect, panelId }: CardProps) {
+function CategoryCard({ category, index, isSelected, onSelect, panelId, dynamicItemCount }: CardProps) {
   const shouldReduce = useReducedMotion();
 
   return (
@@ -200,7 +206,7 @@ function CategoryCard({ category, index, isSelected, onSelect, panelId }: CardPr
 
           {/* Lencana jumlah item — kanan atas */}
           <span className="absolute top-3 right-3 rounded-full bg-espresso-900/70 backdrop-blur-sm px-2.5 py-0.5 text-[10px] font-medium tracking-wider text-crema-300/80 ring-1 ring-crema-50/10">
-            {category.itemCount} items
+            {dynamicItemCount} items
           </span>
         </div>
 
@@ -347,6 +353,14 @@ export function MenuCategoryTabs({ categories }: MenuCategoryTabsProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isAtStart, setIsAtStart] = useState(true);
   const [isAtEnd, setIsAtEnd] = useState(false);
+  const { menuData } = useMenu();
+
+  const getDynamicItemCount = (categoryName: string) => {
+    const brand = CARD_TO_MODAL_TAB[categoryName] ?? categoryName;
+    const subCategories = menuData[brand];
+    if (!subCategories) return 0;
+    return Object.values(subCategories).reduce((sum, items) => sum + items.length, 0);
+  };
 
   // Tab State
   const [selectedId, setSelectedId] = useState<string>(categories[0].id);
@@ -366,9 +380,6 @@ export function MenuCategoryTabs({ categories }: MenuCategoryTabsProps) {
   const handleOpenFullMenu = (categoryName: string) => {
     /* Peta dari 6 nama kartu homepage ke 7 tab modal.
      * "GOLDEN TELLER & CEMILAN" (kartu) → "GOLDEN TELLER" (tab modal). */
-    const CARD_TO_MODAL_TAB: Record<string, string> = {
-      "GOLDEN TELLER & CEMILAN": "GOLDEN TELLER",
-    };
     setActiveCategory(CARD_TO_MODAL_TAB[categoryName] ?? categoryName);
     setIsMenuOpen(true);
   };
@@ -461,6 +472,7 @@ export function MenuCategoryTabs({ categories }: MenuCategoryTabsProps) {
                   isSelected={selectedId === category.id}
                   onSelect={handleSelect}
                   panelId={fullPanelId}
+                  dynamicItemCount={getDynamicItemCount(category.name)}
                 />
               </div>
             ))}
