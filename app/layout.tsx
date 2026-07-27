@@ -61,10 +61,10 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%23121212"/><path d="M25 35h40v20c0 11-9 20-20 20s-20-9-20-20V35z" fill="none" stroke="%23D4924E" stroke-width="6"/><path d="M65 45h10c5.5 0 10 4.5 10 10s-4.5 10-10 10h-6" fill="none" stroke="%23D4924E" stroke-width="6"/><path d="M35 15v10m15-10v10" fill="none" stroke="%23D4924E" stroke-width="6" stroke-linecap="round"/></svg>',
+        url: "/favicon.svg",
         type: "image/svg+xml",
-      }
-    ]
+      },
+    ],
   },
 };
 
