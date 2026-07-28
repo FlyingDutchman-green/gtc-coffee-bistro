@@ -9,7 +9,7 @@ export const siteConfig = {
   tagline: "Di Mana Setiap Cangkir Bercerita",
   description:
     "Kopi special buatan tangan, sajian makanan artisan, dan ruang bernuansa hangat yang membuat Anda betah. Rasakan pengalaman dari seni seduhan presisi kami.",
-  url: "https://gtccoffeebistro.com",
+  url: "https://www.belanja-gtc-center.my.id",
   address: {
     street: "Jl. Raya Jatilondo, Coprayan",
     city: "Kec. Buaran, Kabupaten Pekalongan",
@@ -23,7 +23,7 @@ export const siteConfig = {
   },
   contact: {
     phone: "0858-4228-7195",
-    email: "gtcmenejemen@gmail.com",
+    email: "gtc.center.manage@gmail.com",
   },
   hours: [
     { day: "Senin", open: "10:00", close: "00:00" },

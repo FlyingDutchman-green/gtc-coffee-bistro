@@ -110,7 +110,7 @@ export function CareersModal() {
         {/* Footer CTA */}
         <div className="p-6 border-t border-crema-50/10 bg-[#151515]">
           <a
-            href="mailto:hrd@gtccoffeebistro.com?subject=Lamaran%20Kerja%20GTC%20-%20[Nama%20Anda]"
+            href="mailto:gtc.center.manage@gmail.com?subject=Lamaran%20Kerja%20GTC%20-%20[Nama%20Anda]"
             className="flex items-center justify-center w-full bg-amber-bistro hover:bg-gold-accent text-espresso-950 font-bold text-xs tracking-widest uppercase py-3.5 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-bistro focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212]"
           >
             Kirim CV & Portfolio

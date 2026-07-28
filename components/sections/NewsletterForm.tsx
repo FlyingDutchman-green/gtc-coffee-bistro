@@ -83,7 +83,7 @@ export function NewsletterForm() {
             required
             autoComplete="email"
             disabled={pending || isSuccess}
-            placeholder="anda@contoh.com"
+            placeholder="anda@gmail.com"
             aria-describedby="newsletter-feedback"
             aria-invalid={isInvalid ? 'true' : undefined}
             className={[
