@@ -37,6 +37,13 @@ export const metadata: Metadata = {
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
+  keywords: [
+    "GTC Coffee",
+    "GTC Bistro",
+    "GTC Coffee & Bistro",
+    "Tempat Nongkrong Kopi",
+    "Cafe Terbaik"
+  ],
   openGraph: {
     type: "website",
     siteName: siteConfig.name,

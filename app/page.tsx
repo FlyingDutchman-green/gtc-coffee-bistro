@@ -9,6 +9,14 @@ import Footer from "@/components/sections/Footer";
 export const metadata: Metadata = {
   title: `${siteConfig.name} — ${siteConfig.tagline}`,
   description: siteConfig.description,
+  keywords: [
+    "GTC Coffee Shop",
+    "GTC Coffee & Bistro",
+    "Tempat nongkrong estetik",
+    "Specialty coffee",
+    "Cafe terdekat",
+    "Cafe estetik"
+  ],
 };
 
 /**
