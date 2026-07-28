@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 
+
+
 /* ─────────────────────────────────────────────────────────────────────────────
  * Dataset master GTC — harga dalam integer (Rupiah).
  * Dikonversi ke format "XK" / "X.5K" saat render via formatPrice().
@@ -263,10 +265,11 @@ export type MenuItemDB = {
   sub_category: string;
   name: string;
   price: number;
+  image_url?: string;
 };
 
 type MenuData = Record<string, Record<string, MenuItemDB[]>>;
-type MenuItem = { name: string; price: number };
+export type MenuItem = { name: string; price: number; image_url?: string };
 
 interface MenuContextType {
   menuData: MenuData;
@@ -353,7 +356,13 @@ export function MenuProvider({ children }: { children: ReactNode }) {
   }
 
   const addMenuItem = async (brand: string, subCat: string, item: MenuItem) => {
-    const newItem = { brand, sub_category: subCat, name: item.name, price: item.price };
+    const newItem: Omit<MenuItemDB, "id"> = {
+      brand,
+      sub_category: subCat,
+      name: item.name,
+      price: item.price,
+      ...(item.image_url !== undefined ? { image_url: item.image_url } : {}),
+    };
     const { data, error } = await supabase.from("menu_items").insert([newItem]).select();
     
     if (error) {
@@ -379,9 +388,17 @@ export function MenuProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const updatePayload: { name: string; price: number; image_url?: string } = {
+      name: item.name,
+      price: item.price,
+    };
+    if (item.image_url !== undefined) {
+      updatePayload.image_url = item.image_url;
+    }
+
     const { error } = await supabase
       .from("menu_items")
-      .update({ name: item.name, price: item.price })
+      .update(updatePayload)
       .eq("id", existing.id);
 
     if (error) {
@@ -393,7 +410,12 @@ export function MenuProvider({ children }: { children: ReactNode }) {
       const newData = { ...prev };
       if (newData[brand] && newData[brand][subCat]) {
         const newItems = [...newData[brand][subCat]];
-        newItems[index] = { ...newItems[index], name: item.name, price: item.price };
+        newItems[index] = {
+          ...newItems[index],
+          name: item.name,
+          price: item.price,
+          ...(item.image_url !== undefined ? { image_url: item.image_url } : {}),
+        };
         newData[brand][subCat] = newItems;
       }
       return newData;
