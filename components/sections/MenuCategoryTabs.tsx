@@ -245,11 +245,11 @@ interface PanelProps {
   category: MenuCategory;
   panelId: string;
   onOpenFullMenu: (categoryName: string) => void;
+  allBestSellers?: any[];
 }
 
-function ItemPanel({ category, panelId, onOpenFullMenu }: PanelProps) {
-  // Slicing dataset to show only top 3 premium best seller items
-  const bestSellers = category.featured.slice(0, 3);
+function ItemPanel({ category, panelId, onOpenFullMenu, allBestSellers = [] }: PanelProps) {
+  const bestSellers = allBestSellers.filter((bs: any) => bs.sub_brands?.name === category.name).slice(0, 3);
 
   return (
     <m.div
@@ -279,7 +279,8 @@ function ItemPanel({ category, panelId, onOpenFullMenu }: PanelProps) {
 
       {/* MOBILE LIST (Hidden on sm+) */}
       <div className="flex sm:hidden flex-col gap-5 mb-6 mt-4">
-        {bestSellers.map((item) => (
+        {bestSellers.length === 0 && <p className="text-crema-300/40 text-sm italic">Belum ada menu best seller</p>}
+        {bestSellers.map((item: any) => (
           <div key={item.name} className="flex items-end justify-between gap-4 group">
             <span className="text-[14px] font-bold tracking-wide text-white">
               {item.name}
@@ -295,33 +296,51 @@ function ItemPanel({ category, panelId, onOpenFullMenu }: PanelProps) {
       {/* DESKTOP GRID (Hidden on mobile) */}
       <ul
         role="list"
-        className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6"
+        className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6"
       >
-        {bestSellers.map((item) => (
+        {bestSellers.length === 0 && <p className="text-crema-300/40 text-sm italic col-span-3">Belum ada menu best seller</p>}
+        {bestSellers.map((item: any) => (
           <li
-            key={item.name}
+            key={item.id || item.name}
             className={[
-              "relative flex flex-col gap-1.5 rounded-xl p-4",
+              "relative flex flex-col rounded-xl overflow-hidden",
               "bg-espresso-900 ring-1 ring-crema-50/6",
               "transition-transform duration-200 ease-out hover:scale-[1.02]",
               "hover:ring-amber-bistro/30",
             ].join(" ")}
             style={{ willChange: "transform" }}
           >
-            {item.isSignature && (
-              <span className="absolute top-3 right-3 text-[9px] tracking-widest uppercase text-amber-bistro font-medium">
-                Signature
-              </span>
+            {item.image_url ? (
+              <div className="relative w-full aspect-[4/3] overflow-hidden">
+                <Image src={item.image_url as string} alt={item.name} fill className="object-cover" sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 28vw" />
+                <div className="absolute inset-0 bg-gradient-to-t from-espresso-900/90 via-transparent to-transparent" />
+                {item.badge && (
+                   <span className="absolute top-2 left-2 text-[9px] tracking-widest uppercase text-[#121212] bg-amber-bistro font-bold px-2 py-0.5 rounded-full">
+                     {item.badge}
+                   </span>
+                )}
+              </div>
+            ) : (
+              <div className="relative w-full aspect-[4/3] bg-espresso-800 flex items-center justify-center">
+                 {item.badge && (
+                   <span className="absolute top-2 left-2 text-[9px] tracking-widest uppercase text-[#121212] bg-amber-bistro font-bold px-2 py-0.5 rounded-full">
+                     {item.badge}
+                   </span>
+                 )}
+                 <span className="text-amber-bistro/40 text-3xl font-serif">{item.name.charAt(0)}</span>
+              </div>
             )}
-            <span className="pr-12 text-sm font-semibold text-crema-100 leading-snug">
-              {item.name}
-            </span>
-            <p className="text-xs leading-relaxed text-crema-300/60 line-clamp-2">
-              {item.description}
-            </p>
-            <span className="mt-auto pt-2 text-sm font-bold text-amber-bistro font-mono">
-              {item.price}
-            </span>
+            <div className="p-4 flex flex-col gap-1.5 flex-1">
+              <span className="text-sm font-semibold text-crema-100 leading-snug">
+                {item.name}
+              </span>
+              <p className="text-xs leading-relaxed text-crema-300/60 line-clamp-2">
+                {item.description}
+              </p>
+              <span className="mt-auto pt-2 text-sm font-bold text-amber-bistro font-mono">
+                {item.price}
+              </span>
+            </div>
           </li>
         ))}
       </ul>
@@ -346,9 +365,10 @@ function ItemPanel({ category, panelId, onOpenFullMenu }: PanelProps) {
 /* ── Ekspor root — grid interaktif lengkap + panel ─────────────────────── */
 interface MenuCategoryTabsProps {
   categories: readonly MenuCategory[];
+  allBestSellers?: any[];
 }
 
-export function MenuCategoryTabs({ categories }: MenuCategoryTabsProps) {
+export function MenuCategoryTabs({ categories, allBestSellers = [] }: MenuCategoryTabsProps) {
   const shouldReduce = useReducedMotion();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isAtStart, setIsAtStart] = useState(true);

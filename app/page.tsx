@@ -6,6 +6,9 @@ import MenuGrid from "@/components/sections/MenuGrid";
 import HoursLocation from "@/components/sections/HoursLocation";
 import Footer from "@/components/sections/Footer";
 
+export const dynamic = "force-dynamic";
+
+
 export const metadata: Metadata = {
   title: `${siteConfig.name} — ${siteConfig.tagline}`,
   description: siteConfig.description,
@@ -29,7 +32,8 @@ export const metadata: Metadata = {
  *   §4.4 HoursLocation ✅ — static map (no iframe/SDK), semantic table, JSON-LD
  *   §4.5 Footer      ✅ — semantic footer, newsletter form, inline SVG social icons
  */
-export default function HomePage() {
+export default async function HomePage() {
+
   return (
     <main id="main-content">
       {/* §4.1 — Hero: LCP element, serif H1 animation, primary CTA */}
@@ -38,7 +42,7 @@ export default function HomePage() {
       {/* §4.2 — About / The Vibe: asymmetric CSS grid, image collage, whileInView */}
       <AboutVibe />
 
-      {/* §4.3 — Menu Grid: 5-col desktop, 3-col tablet, scroll-snap mobile, stagger */}
+      {/* §4.3 — Menu Grid: unified sub-brand grid + best sellers */}
       <MenuGrid />
 
       {/* §4.4 — Hours & Location: static map, semantic table, JSON-LD, open-now badge */}

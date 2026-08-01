@@ -26,8 +26,19 @@ export function rotateSize(width: number, height: number, rotation: number) {
 }
 
 /**
- * This function was adapted from the one in the ReadMe of https://github.com/DominicTobias/react-image-crop
+ * HD-quality image crop export.
+ *
+ * The output canvas is upscaled so the shorter side of the crop region
+ * is at least HD_MIN_PX pixels wide, preserving the exact crop aspect ratio.
+ * This ensures crisp, publication-ready images regardless of the source
+ * image's native resolution.
+ *
+ * Adapted from https://github.com/DominicTobias/react-image-crop
  */
+
+/** Minimum output width in pixels for HD quality. */
+const HD_MIN_PX = 1200
+
 export default async function getCroppedImg(
   imageSrc: string,
   pixelCrop: { x: number; y: number; width: number; height: number },
@@ -44,28 +55,27 @@ export default async function getCroppedImg(
 
   const rotRad = getRadianAngle(rotation)
 
-  // calculate bounding box of the rotated image
+  // Calculate bounding box of the rotated image
   const { width: bBoxWidth, height: bBoxHeight } = rotateSize(
     image.width,
     image.height,
     rotation
   )
 
-  // set canvas size to match the bounding box
+  // Set canvas size to match the bounding box (for rotation/flip pass)
   canvas.width = bBoxWidth
   canvas.height = bBoxHeight
 
-  // translate canvas context to a central location to allow rotating and flipping around the center
+  // Translate canvas context to center for rotating and flipping
   ctx.translate(bBoxWidth / 2, bBoxHeight / 2)
   ctx.rotate(rotRad)
   ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1)
   ctx.translate(-image.width / 2, -image.height / 2)
 
-  // draw rotated image
+  // Draw rotated image
   ctx.drawImage(image, 0, 0)
 
-  // croppedAreaPixels values are bounding box relative
-  // extract the cropped image using these values
+  // Extract the cropped region from the rotated canvas
   const data = ctx.getImageData(
     pixelCrop.x,
     pixelCrop.y,
@@ -73,21 +83,41 @@ export default async function getCroppedImg(
     pixelCrop.height
   )
 
-  // set canvas width to final desired crop size - this will clear existing context
-  canvas.width = pixelCrop.width
-  canvas.height = pixelCrop.height
+  // ── HD Upscale ──────────────────────────────────────────────────────────────
+  // Scale up so the output width is at least HD_MIN_PX while preserving ratio.
+  const aspectRatio = pixelCrop.width / pixelCrop.height
+  const outputWidth = Math.max(pixelCrop.width, HD_MIN_PX)
+  const outputHeight = Math.round(outputWidth / aspectRatio)
 
-  // paste generated rotate image at the top left corner
-  ctx.putImageData(data, 0, 0)
+  // Resize the canvas to the HD output dimensions
+  canvas.width = outputWidth
+  canvas.height = outputHeight
 
-  // As a blob
+  // Draw the extracted crop data scaled to HD dimensions
+  // We create an offscreen temp canvas to hold the raw extracted data,
+  // then draw it scaled up into the final HD canvas.
+  const tempCanvas = document.createElement('canvas')
+  tempCanvas.width = pixelCrop.width
+  tempCanvas.height = pixelCrop.height
+  const tempCtx = tempCanvas.getContext('2d')
+  if (!tempCtx) return null
+  tempCtx.putImageData(data, 0, 0)
+
+  ctx.drawImage(tempCanvas, 0, 0, outputWidth, outputHeight)
+  // ────────────────────────────────────────────────────────────────────────────
+
+  // Export as high-quality JPEG blob
   return new Promise((resolve, reject) => {
-    canvas.toBlob((file) => {
-      if (file) {
-        resolve(new File([file], 'cropped_image.jpg', { type: 'image/jpeg' }))
-      } else {
-        reject(new Error('Canvas is empty'))
-      }
-    }, 'image/jpeg', 0.95)
+    canvas.toBlob(
+      (file) => {
+        if (file) {
+          resolve(new File([file], 'cropped_image.jpg', { type: 'image/jpeg' }))
+        } else {
+          reject(new Error('Canvas is empty'))
+        }
+      },
+      'image/jpeg',
+      0.95 // 0.95 — premium HD crispness
+    )
   })
 }

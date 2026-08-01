@@ -6,6 +6,7 @@ import { ReservationModal } from "@/components/sections/ReservationModal";
 import { CareersModal } from "@/components/sections/CareersModal";
 import { PrivacyModal } from "@/components/sections/PrivacyModal";
 import { MenuProvider } from "@/context/MenuContext";
+import { SubBrandProvider } from "@/context/SubBrandContext";
 
 /**
  * Playfair Display — premium serif for display headings (H1, H2)
@@ -85,10 +86,12 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col antialiased">
         <MenuProvider>
-          {children}
-          <ReservationModal />
-          <CareersModal />
-          <PrivacyModal />
+          <SubBrandProvider>
+            {children}
+            <ReservationModal />
+            <CareersModal />
+            <PrivacyModal />
+          </SubBrandProvider>
         </MenuProvider>
       </body>
     </html>
