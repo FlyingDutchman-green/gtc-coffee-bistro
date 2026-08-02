@@ -80,6 +80,25 @@ const contentFadeVariants = {
   },
 };
 
+// ── TIER 3: Premium Entrance Animation ─────────────────────────────────────────
+const carouselContainerVariants = {
+  initial: {},
+  animate: {
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const cardItemVariants = {
+  initial: { opacity: 0, y: 30 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring" as const, stiffness: 70, damping: 16 },
+  },
+};
+
 // ══════════════════════════════════════════════════════════════════════════════
 // Sub-Brand Portrait Card — high-density vertical portrait layout
 // ══════════════════════════════════════════════════════════════════════════════
@@ -95,14 +114,15 @@ function SubBrandCard({
   const icon = getBrandIcon(brand.icon_name ?? "", brand.name);
 
   return (
-    <button
+    <motion.button
+      variants={cardItemVariants}
       type="button"
       onClick={onClick}
       aria-pressed={isActive}
       className={[
         "group relative flex flex-col overflow-hidden rounded-xl text-left",
-        // Mobile carousel: fixed-width snap card; desktop: fluid grid cell
-        "w-[82vw] sm:w-[300px] md:w-full shrink-0 snap-center",
+        // Fixed-width snap card across all viewports; sized per breakpoint
+        "w-[82vw] sm:w-[300px] md:w-[220px] lg:w-[200px] xl:w-[210px] shrink-0 snap-center",
         // Hardware-accelerated: opacity + ring + shadow all transition together
         "transition-all duration-300 ease-out focus-visible:outline-none",
         "focus-visible:ring-2 focus-visible:ring-amber-bistro focus-visible:ring-offset-2 focus-visible:ring-offset-espresso-950",
@@ -217,7 +237,7 @@ function SubBrandCard({
           </p>
         )}
       </div>
-    </button>
+    </motion.button>
   );
 }
 
@@ -432,8 +452,8 @@ function SubBrandsGrid() {
   if (isLoadingBrands) {
     return (
       <div className="flex flex-col gap-6">
-        {/* Skeleton: 6-column portrait grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {/* Skeleton: horizontal scroll row */}
+        <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-none gap-4 pb-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="rounded-xl overflow-hidden animate-pulse">
               <div className="h-9 bg-espresso-800" />
@@ -453,14 +473,18 @@ function SubBrandsGrid() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* ── 6-brand portrait card carousel (mobile) / grid (desktop) ──────── */}
+      {/* ── Sub-brand portrait card carousel (unified horizontal slider) ── */}
       <div className="relative w-full group">
-        {/* Scrollable carousel container */}
-        <div
+        {/* Scrollable carousel container — single horizontal row at all sizes */}
+        <motion.div
+          key={subBrands.length}
           ref={carouselRef}
+          variants={carouselContainerVariants}
+          initial="initial"
+          animate="animate"
           role="tablist"
           aria-label="Sub-brand categories"
-          className="flex overflow-x-auto snap-x snap-mandatory scrollbar-none gap-4 pb-4 md:grid md:grid-cols-6 md:overflow-visible md:pb-0"
+          className="flex overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-none gap-4 pb-4"
         >
           {subBrands.map((brand) => (
             <SubBrandCard
@@ -470,14 +494,14 @@ function SubBrandsGrid() {
               onClick={() => handleSelect(brand)}
             />
           ))}
-        </div>
+        </motion.div>
 
-        {/* ── Floating slide navigation buttons (mobile only) ──────────────── */}
+        {/* ── Floating slide navigation buttons (visible at all viewports) ── */}
         {!isAtStart && (
           <button
             type="button"
             onClick={() => carouselRef.current?.scrollBy({ left: -280, behavior: "smooth" })}
-            className="absolute left-2 top-1/2 -translate-y-1/2 z-10 md:hidden h-10 w-10 rounded-full bg-black/50 backdrop-blur-sm text-amber-bistro ring-1 ring-crema-50/15 hover:bg-black/70 transition-all duration-300 shadow-lg flex items-center justify-center"
+            className="absolute left-2 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/50 backdrop-blur-sm text-amber-bistro ring-1 ring-crema-50/15 hover:bg-black/70 transition-all duration-300 shadow-lg flex items-center justify-center"
             aria-label="Scroll previous"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5" aria-hidden="true">
@@ -489,7 +513,7 @@ function SubBrandsGrid() {
           <button
             type="button"
             onClick={() => carouselRef.current?.scrollBy({ left: 280, behavior: "smooth" })}
-            className="absolute right-2 top-1/2 -translate-y-1/2 z-10 md:hidden h-10 w-10 rounded-full bg-black/50 backdrop-blur-sm text-amber-bistro ring-1 ring-crema-50/15 hover:bg-black/70 transition-all duration-300 shadow-lg flex items-center justify-center"
+            className="absolute right-2 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-black/50 backdrop-blur-sm text-amber-bistro ring-1 ring-crema-50/15 hover:bg-black/70 transition-all duration-300 shadow-lg flex items-center justify-center"
             aria-label="Scroll next"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5" aria-hidden="true">
@@ -579,13 +603,13 @@ export default function MenuGrid() {
                 id="menu-heading"
                 className="font-serif text-4xl font-bold leading-tight tracking-tight text-crema-50 sm:text-5xl"
               >
-                Six Reasons to{" "}
+                Seven Reasons to{" "}
                 <span className="font-serif text-amber-500">
                   Stay Longer
                 </span>
               </h2>
               <p className="max-w-lg text-sm leading-relaxed text-crema-300/65 font-light">
-                Enam sub-brand kuliner GTC tersaji dalam satu tempat — ketuk kategori mana pun
+                Tujuh sub-brand kuliner GTC tersaji dalam satu tempat — ketuk kategori mana pun
                 untuk menelusuri menu lengkap, atau singgah dan tanyakan sajian spesial hari ini.
               </p>
             </div>

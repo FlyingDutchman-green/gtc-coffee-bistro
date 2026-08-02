@@ -62,12 +62,50 @@ export function SubBrandProvider({ children }: { children: ReactNode }) {
   const refetchSubBrands = useCallback(async () => {
     setIsLoadingBrands(true);
     try {
-      const { data, error } = await supabase
+      // 1. Fetch all sub-brands
+      const { data: brandsData, error: brandsError } = await supabase
         .from("sub_brands")
         .select("*")
         .order("created_at", { ascending: true });
-    console.log("DEBUG BEST SELLERS:", data, error);
-      if (!error && data) setSubBrands(data as SubBrand[]);
+
+      if (brandsError || !brandsData) return;
+
+      // 2. Fetch all sub_categories (lightweight: only id + sub_brand_id)
+      const { data: catData } = await supabase
+        .from("sub_categories")
+        .select("id, sub_brand_id");
+
+      // 3. Fetch all menus (lightweight: only id + sub_category_id)
+      const { data: menuData } = await supabase
+        .from("menus")
+        .select("id, sub_category_id");
+
+      // 4. Build lookup: sub_category_id → sub_brand_id
+      const catToBrand: Record<string, string> = {};
+      if (catData) {
+        for (const cat of catData) {
+          catToBrand[cat.id] = cat.sub_brand_id;
+        }
+      }
+
+      // 5. Count menus per sub_brand_id
+      const countMap: Record<string, number> = {};
+      if (menuData) {
+        for (const menu of menuData) {
+          const brandId = catToBrand[menu.sub_category_id];
+          if (brandId) {
+            countMap[brandId] = (countMap[brandId] ?? 0) + 1;
+          }
+        }
+      }
+
+      // 6. Override static item_count with real computed counts
+      const enriched = (brandsData as SubBrand[]).map((brand) => ({
+        ...brand,
+        item_count: countMap[brand.id] ?? 0,
+      }));
+
+      setSubBrands(enriched);
     } finally {
       setIsLoadingBrands(false);
     }
