@@ -207,15 +207,16 @@ export default function AboutVibe() {
                 </div>
               </Fade>
 
-              {/* Bawah: biji lanskap lebar, mengisi penuh ruang kosong */}
+              {/* Bawah: biji lanskap lebar, rasio 16:9 sejati */}
               <Fade delay={0.35} variant="fade" className="col-span-2">
-                <div className="relative w-full aspect-[19/6] overflow-hidden rounded-xl">
+                <div className="w-full aspect-video overflow-hidden rounded-xl">
                   <Image
                     src={about.images[2].src}
                     alt={about.images[2].alt}
-                    fill
-                    sizes="(max-width: 768px) 50vw, (max-width: 1280px) 25vw, 300px"
-                    className="object-cover object-center transition-transform duration-700 ease-out hover:scale-[1.03]"
+                    width={0}
+                    height={0}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 700px"
+                    className="w-full h-full object-cover object-center transition-transform duration-700 ease-out hover:scale-[1.03]"
                     style={{ willChange: "transform" }}
                   />
                   <div

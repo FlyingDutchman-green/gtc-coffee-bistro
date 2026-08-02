@@ -625,7 +625,7 @@ function SubBrandModal({ editing, onClose, onSaved }: SubBrandModalProps) {
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl flex flex-col gap-5 p-6">
+      <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl flex flex-col gap-5 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-amber-bistro font-bold tracking-widest uppercase text-sm">
             {editing ? "Edit Sub-Brand" : "Tambah Sub-Brand"}
@@ -702,7 +702,7 @@ function DeleteSubBrandDialog({ brand, onCancel, onConfirm }: DeleteSubBrandDial
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-[#1a1a1a] border border-red-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 flex flex-col gap-5">
+      <div className="bg-[#1a1a1a] border border-red-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center">
@@ -815,7 +815,7 @@ function BestSellersPanel({ bestSellers, onRefetch }: BestSellersPanelProps) {
       {/* ── Delete Best Seller confirmation dialog ── */}
       {deletingBs && (
         <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#1a1a1a] border border-amber-bistro/20 rounded-2xl w-full max-w-md shadow-2xl p-6 flex flex-col gap-5">
+          <div className="bg-[#1a1a1a] border border-amber-bistro/20 rounded-2xl w-full max-w-md shadow-2xl p-6 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-bistro/10 flex items-center justify-center">
@@ -1055,6 +1055,13 @@ function SubCategorySection({
   const [bsModal, setBsModal] = useState<Menu | null>(null);   // menu waiting to become BS
   const [starLoading, setStarLoading] = useState<string | null>(null); // menu id being processed
 
+  // ── Accordion open/closed state keyed by sub-category ID ─────────────────
+  // All panels start open (true). New sub-categories inherit open state on first toggle.
+  const [openCats, setOpenCats] = useState<Record<string, boolean>>({});
+  const isCatOpen = (id: string): boolean => openCats[id] !== false; // default open
+  const toggleCat = (id: string) =>
+    setOpenCats((prev) => ({ ...prev, [id]: !isCatOpen(id) }));
+
   const bsCount = bestSellers.length;
   const bsMenuNames = new Set(bestSellers.map((b) => b.name)); // for lookup (name-based match)
   // Better: match by name+price since we don't store menu_id in best_sellers
@@ -1192,40 +1199,74 @@ function SubCategorySection({
         />
       )}
 
-      <div className="space-y-2">
-        {/* ── Add Sub Category ── */}
-        <div className="mb-5">
-          {showAddCat ? (
-            <div className="flex items-center gap-2">
+      {/* ── Add Sub-Category Modal ── */}
+      {showAddCat && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-md">
+          <div className="bg-[#1a1a1a] border border-amber-bistro/30 rounded-2xl w-full max-w-sm shadow-2xl flex flex-col gap-5 p-6 max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-amber-bistro font-bold tracking-widest uppercase text-sm">Tambah Sub-Kategori</h2>
+              <button
+                onClick={() => { setShowAddCat(false); setNewCatName(""); setCatError(""); }}
+                disabled={catSaving}
+                className="text-crema-300/50 hover:text-white transition-colors disabled:opacity-40"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* Body */}
+            <div>
+              <label className="block text-xs text-crema-300 mb-1.5">Nama Sub-Kategori <span className="text-amber-bistro">*</span></label>
               <input
                 type="text"
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
                 disabled={catSaving}
                 placeholder="Nama sub-kategori baru..."
-                className="flex-1 bg-[#121212] border border-amber-bistro/50 rounded-md px-3 py-1.5 text-sm focus:border-amber-bistro outline-none disabled:opacity-50"
-                onKeyDown={(e) => { if (e.key === "Enter") handleSaveCat(); if (e.key === "Escape") setShowAddCat(false); }}
+                className="w-full bg-[#121212] border border-white/10 rounded-md px-3 py-2 text-sm focus:border-amber-bistro outline-none disabled:opacity-50"
+                onKeyDown={(e) => { if (e.key === "Enter") handleSaveCat(); if (e.key === "Escape") { setShowAddCat(false); setNewCatName(""); setCatError(""); } }}
+                autoFocus
               />
-              <button onClick={handleSaveCat} disabled={catSaving} className="flex items-center gap-1.5 bg-amber-bistro text-[#121212] px-3 py-1.5 rounded text-sm font-bold hover:bg-amber-bistro/90 disabled:opacity-60">
-                {catSaving && <Spinner className="h-3 w-3" />}
-                Simpan
-              </button>
-              <button onClick={() => { setShowAddCat(false); setNewCatName(""); setCatError(""); }} disabled={catSaving} className="bg-white/5 text-crema-300 px-3 py-1.5 rounded text-sm hover:bg-white/10">
+            </div>
+            {catError && (
+              <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-md px-3 py-2">{catError}</p>
+            )}
+            {/* Footer */}
+            <div className="flex gap-3 justify-end pt-2 border-t border-white/5">
+              <button
+                onClick={() => { setShowAddCat(false); setNewCatName(""); setCatError(""); }}
+                disabled={catSaving}
+                className="px-4 py-2 text-sm text-crema-300 hover:text-white bg-white/5 rounded-lg disabled:opacity-50"
+              >
                 Batal
               </button>
+              <button
+                onClick={handleSaveCat}
+                disabled={catSaving}
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-amber-bistro text-[#121212] font-bold rounded-lg hover:bg-amber-bistro/90 disabled:opacity-60"
+              >
+                {catSaving && <Spinner className="h-3.5 w-3.5" />}
+                {catSaving ? "Menyimpan..." : "Simpan"}
+              </button>
             </div>
-          ) : (
-            <button
-              onClick={() => setShowAddCat(true)}
-              className="flex items-center gap-2 text-sm font-bold text-crema-300 hover:text-amber-bistro border border-white/10 hover:border-amber-bistro/30 px-4 py-2 rounded-lg transition-all duration-200"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              Tambah Sub-Kategori
-            </button>
-          )}
-          {catError && <p className="text-red-400 text-xs mt-1">{catError}</p>}
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {/* ── Add Sub Category trigger ── */}
+        <div className="mb-5">
+          <button
+            onClick={() => setShowAddCat(true)}
+            className="flex items-center gap-2 text-sm font-bold text-crema-300 hover:text-amber-bistro border border-white/10 hover:border-amber-bistro/30 px-4 py-2 rounded-lg transition-all duration-200"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Tambah Sub-Kategori
+          </button>
         </div>
 
         {/* ── Best seller quota bar (visible in Menu tab) ── */}
@@ -1250,10 +1291,13 @@ function SubCategorySection({
             const catMenus = menus[cat.id] ?? [];
             return (
               <div key={cat.id} className="border border-white/5 rounded-xl overflow-hidden">
-                {/* Sub-category header */}
-                <div className="flex items-center justify-between bg-[#1a1a1a] px-4 py-3 border-b border-white/5">
+                {/* Sub-category header — clicking anywhere on the row toggles accordion */}
+                <div
+                  className="flex items-center justify-between bg-[#1a1a1a] px-4 py-3 border-b border-white/5 cursor-pointer select-none"
+                  onClick={() => { if (editCatId !== cat.id) toggleCat(cat.id); }}
+                >
                   {editCatId === cat.id ? (
-                    <div className="flex items-center gap-2 flex-1">
+                    <div className="flex items-center gap-2 flex-1" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="text"
                         value={editCatName}
@@ -1266,18 +1310,23 @@ function SubCategorySection({
                     </div>
                   ) : (
                     <>
-                      <h3 className="text-sm font-bold text-amber-bistro uppercase tracking-widest">{cat.name}</h3>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-crema-300/40">{catMenus.length} menu</span>
-                        <button
-                          onClick={() => { setAddMenuFor(addMenuFor === cat.id ? null : cat.id); setMenuError(""); }}
-                          className="flex items-center gap-1 text-xs font-bold text-green-400 hover:text-green-300 bg-green-400/10 hover:bg-green-400/20 px-2.5 py-1 rounded-md border border-green-400/20 transition-all"
+                      <div className="flex items-center gap-2 min-w-0">
+                        {/* Animated chevron */}
+                        <svg
+                          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+                          className={`h-3.5 w-3.5 flex-shrink-0 text-amber-bistro/60 transition-transform duration-300 ${
+                            isCatOpen(cat.id) ? "rotate-0" : "-rotate-90"
+                          }`}
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3 w-3">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                          </svg>
-                          Tambah Menu
-                        </button>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                        {/* Title + count stacked vertically */}
+                        <div className="flex flex-col items-start gap-0.5 min-w-0">
+                          <h3 className="text-sm font-bold text-amber-bistro uppercase tracking-widest leading-none">{cat.name}</h3>
+                          <span className="text-xs text-crema-300/40 leading-none">{catMenus.length} menu</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
                         <button onClick={() => { setEditCatId(cat.id); setEditCatName(cat.name); }} className="text-blue-400 hover:text-blue-300 text-xs font-medium">
                           Edit
                         </button>
@@ -1289,184 +1338,253 @@ function SubCategorySection({
                   )}
                 </div>
 
-                {/* Add menu inline form */}
-                {addMenuFor === cat.id && (
-                  <div className="px-4 pt-4 pb-2 bg-[#151515] border-b border-amber-bistro/20">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                      <div>
-                        <label className="block text-xs text-crema-300 mb-1">Nama Menu *</label>
-                        <input type="text" value={menuForm.name} onChange={(e) => setMenuForm((p) => ({ ...p, name: e.target.value }))}
-                          disabled={menuSaving} placeholder="Nama menu..."
-                          className="w-full bg-[#121212] border border-white/10 rounded px-2 py-1.5 text-sm focus:border-amber-bistro outline-none disabled:opacity-50" />
+                {/* ── Accordion body: CSS-grid height transition ── */}
+                <div
+                  className={`grid transition-all duration-300 ease-in-out ${
+                    isCatOpen(cat.id)
+                      ? "grid-rows-[1fr] opacity-100 pointer-events-auto"
+                      : "grid-rows-[0fr] opacity-0 pointer-events-none"
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    {/* Add Menu Modal — rendered as global overlay when this category is active */}
+                    {addMenuFor === cat.id && (
+                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-md">
+                        <div className="bg-[#1a1a1a] border border-amber-bistro/30 rounded-2xl w-full max-w-md shadow-2xl flex flex-col gap-5 p-6 max-h-[90vh] overflow-y-auto">
+                          {/* Header */}
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-[10px] tracking-[0.2em] uppercase text-amber-bistro font-medium mb-0.5">Tambah Menu</p>
+                              <h2 className="text-base font-bold text-crema-50">{cat.name}</h2>
+                            </div>
+                            <button
+                              onClick={() => { handleAddMenuClear(); setAddMenuFor(null); setMenuError(""); }}
+                              disabled={menuSaving}
+                              className="text-crema-300/50 hover:text-white transition-colors disabled:opacity-40"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                          {/* Body */}
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-xs text-crema-300 mb-1.5">Nama Menu <span className="text-amber-bistro">*</span></label>
+                              <input
+                                type="text"
+                                value={menuForm.name}
+                                onChange={(e) => setMenuForm((p) => ({ ...p, name: e.target.value }))}
+                                disabled={menuSaving}
+                                placeholder="Nama menu..."
+                                className="w-full bg-[#121212] border border-white/10 rounded-md px-3 py-2 text-sm focus:border-amber-bistro outline-none disabled:opacity-50"
+                                autoFocus
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-crema-300 mb-1.5">Harga <span className="text-amber-bistro">*</span></label>
+                              <input
+                                type="text"
+                                value={menuForm.price}
+                                onChange={(e) => setMenuForm((p) => ({ ...p, price: e.target.value }))}
+                                disabled={menuSaving}
+                                placeholder="25K"
+                                className="w-full bg-[#121212] border border-white/10 rounded-md px-3 py-2 text-sm focus:border-amber-bistro outline-none disabled:opacity-50 font-mono"
+                              />
+                            </div>
+                            <ImageUploadField
+                              id={`menu-add-${cat.id}`}
+                              preview={menuForm.imagePreview}
+                              uploading={menuSaving}
+                              onFileSelect={handleAddMenuFileSelect}
+                              onClear={handleAddMenuClear}
+                              label="Foto Menu"
+                            />
+                          </div>
+                          {menuError && (
+                            <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-md px-3 py-2">{menuError}</p>
+                          )}
+                          {/* Footer */}
+                          <div className="flex gap-3 justify-end pt-2 border-t border-white/5">
+                            <button
+                              onClick={() => { handleAddMenuClear(); setAddMenuFor(null); setMenuError(""); }}
+                              disabled={menuSaving}
+                              className="px-4 py-2 text-sm text-crema-300 hover:text-white bg-white/5 rounded-lg disabled:opacity-50"
+                            >
+                              Batal
+                            </button>
+                            <button
+                              onClick={() => handleSaveMenu(cat.id)}
+                              disabled={menuSaving}
+                              className="flex items-center gap-2 px-4 py-2 text-sm bg-amber-bistro text-[#121212] font-bold rounded-lg hover:bg-amber-bistro/90 disabled:opacity-60"
+                            >
+                              {menuSaving && <Spinner className="h-3.5 w-3.5" />}
+                              {menuSaving ? "Menyimpan..." : "Simpan Menu"}
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-xs text-crema-300 mb-1">Harga *</label>
-                        <input type="text" value={menuForm.price} onChange={(e) => setMenuForm((p) => ({ ...p, price: e.target.value }))}
-                          disabled={menuSaving} placeholder="25K"
-                          className="w-full bg-[#121212] border border-white/10 rounded px-2 py-1.5 text-sm focus:border-amber-bistro outline-none disabled:opacity-50" />
-                      </div>
-                    </div>
-                    <div className="mb-3 max-w-xs">
-                      <ImageUploadField id={`menu-add-${cat.id}`} preview={menuForm.imagePreview} uploading={menuSaving}
-                        onFileSelect={handleAddMenuFileSelect} onClear={handleAddMenuClear} label="Foto Menu" />
-                    </div>
-                    {menuError && <p className="text-red-400 text-xs mb-2">{menuError}</p>}
-                    <div className="flex gap-2 pb-3">
-                      <button onClick={() => handleSaveMenu(cat.id)} disabled={menuSaving}
-                        className="flex items-center gap-1.5 bg-amber-bistro text-[#121212] px-4 py-1.5 rounded text-sm font-bold hover:bg-amber-bistro/90 disabled:opacity-60">
-                        {menuSaving && <Spinner className="h-3 w-3" />}
-                        Simpan
-                      </button>
-                      <button onClick={() => { handleAddMenuClear(); setAddMenuFor(null); setMenuError(""); }} disabled={menuSaving}
-                        className="bg-white/5 text-crema-300 px-4 py-1.5 rounded text-sm hover:bg-white/10">
-                        Batal
-                      </button>
-                    </div>
-                  </div>
-                )}
+                    )}
 
-                {/* ── Menu table with ★ Best Seller toggle ── */}
-                {catMenus.length > 0 && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                      <thead>
-                        <tr className="text-crema-300/40 border-b border-white/5">
-                          <th className="px-4 py-2 font-medium w-8" />
-                          <th className="px-2 py-2 font-medium">Nama Menu</th>
-                          <th className="px-2 py-2 font-medium w-28">Harga</th>
-                          <th className="px-4 py-2 font-medium text-right">Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {catMenus.map((menu) => {
-                          const isEditingMenu = editMenuId === menu.id;
-                          const matchedBs = getBestSellerForMenu(menu);
-                          const isBs = matchedBs !== null;
-                          const isStarLoading = starLoading === menu.id;
-                          const isStarDisabled = !isBs && bsCount >= 3;
-
-                          return (
-                            <tr key={menu.id} className="hover:bg-white/[0.02] transition-colors">
-                              {/* Thumbnail */}
-                              <td className="px-4 py-2.5">
-                                {menu.image_url ? (
-                                  <div className="relative w-7 h-7 rounded overflow-hidden">
-                                    <Image src={menu.image_url} alt={menu.name} fill className="object-cover" sizes="28px" />
-                                  </div>
-                                ) : (
-                                  <div className="w-7 h-7 rounded bg-white/5 flex items-center justify-center">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-3.5 h-3.5 text-crema-300/20">
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909" />
-                                    </svg>
-                                  </div>
-                                )}
-                              </td>
-
-                              {/* Name / Edit form */}
-                              <td className="px-2 py-2.5">
-                                {isEditingMenu ? (
-                                  <div className="space-y-1.5">
-                                    <input type="text" value={editMenuForm.name}
-                                      onChange={(e) => setEditMenuForm((p) => ({ ...p, name: e.target.value }))}
-                                      disabled={editMenuSaving}
-                                      className="w-full bg-[#121212] border border-white/20 rounded px-2 py-1 text-sm focus:border-amber-bistro outline-none" />
-                                    <ImageUploadField id={`menu-edit-${menu.id}`} preview={editMenuForm.imagePreview}
-                                      existingUrl={editMenuForm.existingUrl} uploading={editMenuSaving}
-                                      onFileSelect={handleEditMenuFileSelect} onClear={handleEditMenuClear} label="Foto" />
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-crema-50 font-medium">{menu.name}</span>
-                                    {isBs && (
-                                      <span className="text-[9px] bg-amber-bistro/15 text-amber-bistro border border-amber-bistro/25 px-1.5 py-0.5 rounded-full tracking-wider font-medium">
-                                        ★ BS
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                              </td>
-
-                              {/* Price */}
-                              <td className="px-2 py-2.5">
-                                {isEditingMenu ? (
-                                  <input type="text" value={editMenuForm.price}
-                                    onChange={(e) => setEditMenuForm((p) => ({ ...p, price: e.target.value }))}
-                                    disabled={editMenuSaving}
-                                    className="w-24 bg-[#121212] border border-white/20 rounded px-2 py-1 text-sm focus:border-amber-bistro outline-none font-mono" />
-                                ) : (
-                                  <span className="font-mono text-amber-bistro">{menu.price}</span>
-                                )}
-                              </td>
-
-                              {/* Actions */}
-                              <td className="px-4 py-2.5 text-right">
-                                {isEditingMenu ? (
-                                  <div className="flex justify-end gap-2 items-center">
-                                    <button onClick={() => handleUpdateMenu(menu)} disabled={editMenuSaving}
-                                      className="flex items-center gap-1 text-green-400 hover:text-green-300 text-xs font-bold bg-green-400/10 px-2 py-1 rounded disabled:opacity-50">
-                                      {editMenuSaving && <Spinner className="h-3 w-3" />}
-                                      Simpan
-                                    </button>
-                                    <button onClick={() => { if (editMenuForm.imagePreview) URL.revokeObjectURL(editMenuForm.imagePreview); setEditMenuId(null); }}
-                                      disabled={editMenuSaving} className="text-crema-300 text-xs bg-white/5 px-2 py-1 rounded">
-                                      Batal
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <div className="flex justify-end items-center gap-2">
-                                    {/* ★ Best Seller Toggle */}
-                                    <button
-                                      onClick={() => handleStarToggle(menu)}
-                                      disabled={isStarLoading || isStarDisabled}
-                                      title={
-                                        isBs
-                                          ? "Hapus dari Best Seller"
-                                          : isStarDisabled
-                                          ? "Kuota penuh (3/3)"
-                                          : "Set sebagai Best Seller"
-                                      }
-                                      className={[
-                                        "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold transition-all duration-200",
-                                        isBs
-                                          ? "bg-amber-bistro/20 text-amber-bistro border border-amber-bistro/40 hover:bg-amber-bistro/30 shadow-[0_0_8px_rgba(212,146,78,0.2)]"
-                                          : isStarDisabled
-                                          ? "bg-white/5 text-crema-300/25 cursor-not-allowed border border-white/5"
-                                          : "bg-white/5 text-crema-300/60 border border-white/10 hover:bg-amber-bistro/10 hover:text-amber-bistro hover:border-amber-bistro/30",
-                                      ].join(" ")}
-                                    >
-                                      {isStarLoading ? (
-                                        <Spinner className="h-3 w-3" />
-                                      ) : (
-                                        <span className={isBs ? "text-amber-bistro" : ""}>{isBs ? "★" : "☆"}</span>
-                                      )}
-                                      <span className="hidden sm:inline">{isBs ? "Best Seller" : "Set BS"}</span>
-                                    </button>
-
-                                    <button
-                                      onClick={() => {
-                                        setEditMenuId(menu.id);
-                                        setEditMenuForm({ name: menu.name, price: menu.price, imageFile: null, imagePreview: null, existingUrl: menu.image_url ?? null });
-                                      }}
-                                      className="text-blue-400 hover:text-blue-300 text-xs font-medium"
-                                    >
-                                      Edit
-                                    </button>
-                                    <button onClick={() => handleDeleteMenu(menu)} className="text-red-400 hover:text-red-300 text-xs font-medium">
-                                      Hapus
-                                    </button>
-                                  </div>
-                                )}
-                              </td>
+                    {/* ── Menu table with ★ Best Seller toggle ── */}
+                    {catMenus.length > 0 && (
+                      <div className="overflow-x-auto whitespace-nowrap scrollbar-none">
+                        <table className="min-w-[768px] w-full text-sm text-left">
+                          <thead>
+                            <tr className="text-crema-300/40 border-b border-white/5">
+                              <th className="px-4 py-2 font-medium w-8" />
+                              <th className="px-2 py-2 font-medium">Nama Menu</th>
+                              <th className="px-2 py-2 font-medium w-28">Harga</th>
+                              <th className="px-4 py-2 font-medium text-right">Aksi</th>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {catMenus.map((menu) => {
+                              const isEditingMenu = editMenuId === menu.id;
+                              const matchedBs = getBestSellerForMenu(menu);
+                              const isBs = matchedBs !== null;
+                              const isStarLoading = starLoading === menu.id;
+                              const isStarDisabled = !isBs && bsCount >= 3;
+
+                              return (
+                                <tr key={menu.id} className="hover:bg-white/[0.02] transition-colors">
+                                  {/* Thumbnail */}
+                                  <td className="px-4 py-2.5">
+                                    {menu.image_url ? (
+                                      <div className="relative w-7 h-7 rounded overflow-hidden">
+                                        <Image src={menu.image_url} alt={menu.name} fill className="object-cover" sizes="28px" />
+                                      </div>
+                                    ) : (
+                                      <div className="w-7 h-7 rounded bg-white/5 flex items-center justify-center">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-3.5 h-3.5 text-crema-300/20">
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909" />
+                                        </svg>
+                                      </div>
+                                    )}
+                                  </td>
+
+                                  {/* Name / Edit form */}
+                                  <td className="px-2 py-2.5">
+                                    {isEditingMenu ? (
+                                      <div className="space-y-1.5">
+                                        <input type="text" value={editMenuForm.name}
+                                          onChange={(e) => setEditMenuForm((p) => ({ ...p, name: e.target.value }))}
+                                          disabled={editMenuSaving}
+                                          className="w-full bg-[#121212] border border-white/20 rounded px-2 py-1 text-sm focus:border-amber-bistro outline-none" />
+                                        <ImageUploadField id={`menu-edit-${menu.id}`} preview={editMenuForm.imagePreview}
+                                          existingUrl={editMenuForm.existingUrl} uploading={editMenuSaving}
+                                          onFileSelect={handleEditMenuFileSelect} onClear={handleEditMenuClear} label="Foto" />
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-crema-50 font-medium">{menu.name}</span>
+                                        {isBs && (
+                                          <span className="text-[9px] bg-amber-bistro/15 text-amber-bistro border border-amber-bistro/25 px-1.5 py-0.5 rounded-full tracking-wider font-medium">
+                                            ★ BS
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </td>
+
+                                  {/* Price */}
+                                  <td className="px-2 py-2.5">
+                                    {isEditingMenu ? (
+                                      <input type="text" value={editMenuForm.price}
+                                        onChange={(e) => setEditMenuForm((p) => ({ ...p, price: e.target.value }))}
+                                        disabled={editMenuSaving}
+                                        className="w-24 bg-[#121212] border border-white/20 rounded px-2 py-1 text-sm focus:border-amber-bistro outline-none font-mono" />
+                                    ) : (
+                                      <span className="font-mono text-amber-bistro">{menu.price}</span>
+                                    )}
+                                  </td>
+
+                                  {/* Actions */}
+                                  <td className="px-4 py-2.5 text-right">
+                                    {isEditingMenu ? (
+                                      <div className="flex justify-end gap-2 items-center">
+                                        <button onClick={() => handleUpdateMenu(menu)} disabled={editMenuSaving}
+                                          className="flex items-center gap-1 text-green-400 hover:text-green-300 text-xs font-bold bg-green-400/10 px-2 py-1 rounded disabled:opacity-50">
+                                          {editMenuSaving && <Spinner className="h-3 w-3" />}
+                                          Simpan
+                                        </button>
+                                        <button onClick={() => { if (editMenuForm.imagePreview) URL.revokeObjectURL(editMenuForm.imagePreview); setEditMenuId(null); }}
+                                          disabled={editMenuSaving} className="text-crema-300 text-xs bg-white/5 px-2 py-1 rounded">
+                                          Batal
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex justify-end items-center gap-2">
+                                        {/* ★ Best Seller Toggle */}
+                                        <button
+                                          onClick={() => handleStarToggle(menu)}
+                                          disabled={isStarLoading || isStarDisabled}
+                                          title={
+                                            isBs
+                                              ? "Hapus dari Best Seller"
+                                              : isStarDisabled
+                                              ? "Kuota penuh (3/3)"
+                                              : "Set sebagai Best Seller"
+                                          }
+                                          className={[
+                                            "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold transition-all duration-200",
+                                            isBs
+                                              ? "bg-amber-bistro/20 text-amber-bistro border border-amber-bistro/40 hover:bg-amber-bistro/30 shadow-[0_0_8px_rgba(212,146,78,0.2)]"
+                                              : isStarDisabled
+                                              ? "bg-white/5 text-crema-300/25 cursor-not-allowed border border-white/5"
+                                              : "bg-white/5 text-crema-300/60 border border-white/10 hover:bg-amber-bistro/10 hover:text-amber-bistro hover:border-amber-bistro/30",
+                                          ].join(" ")}
+                                        >
+                                          {isStarLoading ? (
+                                            <Spinner className="h-3 w-3" />
+                                          ) : (
+                                            <span className={isBs ? "text-amber-bistro" : ""}>{isBs ? "★" : "☆"}</span>
+                                          )}
+                                          <span className="hidden sm:inline">{isBs ? "Best Seller" : "Set BS"}</span>
+                                        </button>
+
+                                        <button
+                                          onClick={() => {
+                                            setEditMenuId(menu.id);
+                                            setEditMenuForm({ name: menu.name, price: menu.price, imageFile: null, imagePreview: null, existingUrl: menu.image_url ?? null });
+                                          }}
+                                          className="text-blue-400 hover:text-blue-300 text-xs font-medium"
+                                        >
+                                          Edit
+                                        </button>
+                                        <button onClick={() => handleDeleteMenu(menu)} className="text-red-400 hover:text-red-300 text-xs font-medium">
+                                          Hapus
+                                        </button>
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {catMenus.length === 0 && addMenuFor !== cat.id && (
+                      <p className="text-crema-300/40 text-sm text-center py-5 px-4">Belum ada menu di sub-kategori ini.</p>
+                    )}
+
+                    {/* ── Tambah Menu — full-width trigger at accordion bottom ── */}
+                    {addMenuFor !== cat.id && (
+                      <div className="px-4 py-3 border-t border-white/5">
+                        <button
+                          onClick={() => { setAddMenuFor(cat.id); setMenuError(""); }}
+                          className="w-full flex items-center justify-center gap-2 text-xs font-bold text-green-400 hover:text-green-300 bg-green-400/8 hover:bg-green-400/15 border border-dashed border-green-400/25 hover:border-green-400/50 px-4 py-2.5 rounded-lg transition-all duration-200"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3.5 w-3.5 flex-shrink-0">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                          </svg>
+                          Tambah Menu
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-                {catMenus.length === 0 && addMenuFor !== cat.id && (
-                  <p className="text-crema-300/40 text-sm text-center py-5 px-4">Belum ada menu di sub-kategori ini.</p>
-                )}
+                </div>
               </div>
             );
           })
@@ -1570,7 +1688,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#121212] text-crema-50 font-sans">
+    <div className="min-h-screen bg-[#121212] text-crema-50 font-sans overflow-x-hidden">
       <div className="max-w-6xl mx-auto p-4 sm:p-8">
 
         {/* ── HEADER ── */}
@@ -1611,73 +1729,76 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/5 mb-6 pb-1 gap-4">
-              {/* Tab strip */}
-              <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden gap-1 flex-1 min-w-0">
-                {subBrands.map((brand) => (
+            {/* ── Sub-brand tab strip + action buttons: horizontally scrollable on mobile ── */}
+            <div className="overflow-x-auto whitespace-nowrap scrollbar-none border-b border-white/5 mb-6">
+              <div className="inline-flex items-center justify-between w-full min-w-max pb-1 gap-4">
+                {/* Tab strip */}
+                <div className="flex gap-1 flex-shrink-0">
+                  {subBrands.map((brand) => (
+                    <button
+                      key={brand.id}
+                      onClick={() => { setActiveBrandId(brand.id); setActiveTab("menu"); }}
+                      className={`px-4 py-2.5 rounded-t-lg text-xs font-bold tracking-widest uppercase transition-all whitespace-nowrap flex-shrink-0 ${
+                        activeBrandId === brand.id
+                          ? "bg-amber-bistro text-[#121212]"
+                          : "text-crema-300 hover:text-crema-50 hover:bg-white/5"
+                      }`}
+                    >
+                      {brand.name}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Inline action buttons — right of tabs */}
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  {/* Edit active sub-brand */}
                   <button
-                    key={brand.id}
-                    onClick={() => { setActiveBrandId(brand.id); setActiveTab("menu"); }}
-                    className={`px-4 py-2.5 rounded-t-lg text-xs font-bold tracking-widest uppercase transition-all whitespace-nowrap flex-shrink-0 ${
-                      activeBrandId === brand.id
-                        ? "bg-amber-bistro text-[#121212]"
-                        : "text-crema-300 hover:text-crema-50 hover:bg-white/5"
-                    }`}
+                    id="btn-edit-sub-brand"
+                    onClick={() => {
+                      if (!activeBrand) return;
+                      setEditingBrand(activeBrand);
+                      setShowSubBrandModal(true);
+                    }}
+                    disabled={!activeBrand}
+                    title={activeBrand ? `Edit: ${activeBrand.name}` : "Pilih sub-brand terlebih dahulu"}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg border transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed text-blue-400 border-blue-400/25 bg-blue-400/8 hover:bg-blue-400/20 hover:border-blue-400/50"
                   >
-                    {brand.name}
+                    {/* Edit3 icon */}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-3.5 w-3.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-5" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    <span className="hidden sm:inline">Edit</span>
                   </button>
-                ))}
-              </div>
 
-              {/* Inline action buttons — right of tabs, left of Add button */}
-              <div className="flex flex-shrink-0 items-center gap-2 mb-1">
-                {/* Edit active sub-brand */}
-                <button
-                  id="btn-edit-sub-brand"
-                  onClick={() => {
-                    if (!activeBrand) return;
-                    setEditingBrand(activeBrand);
-                    setShowSubBrandModal(true);
-                  }}
-                  disabled={!activeBrand}
-                  title={activeBrand ? `Edit: ${activeBrand.name}` : "Pilih sub-brand terlebih dahulu"}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg border transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed text-blue-400 border-blue-400/25 bg-blue-400/8 hover:bg-blue-400/20 hover:border-blue-400/50"
-                >
-                  {/* Edit3 icon */}
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-3.5 w-3.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-5" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                  </svg>
-                  <span className="hidden sm:inline">Edit</span>
-                </button>
+                  {/* Delete active sub-brand */}
+                  <button
+                    id="btn-delete-sub-brand"
+                    onClick={() => { if (activeBrand) setDeleteDialogBrand(activeBrand); }}
+                    disabled={!activeBrand}
+                    title={activeBrand ? `Hapus: ${activeBrand.name}` : "Pilih sub-brand terlebih dahulu"}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg border transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed text-red-400 border-red-400/25 bg-red-400/8 hover:bg-red-400/20 hover:border-red-400/50"
+                  >
+                    {/* Trash2 icon */}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-3.5 w-3.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 11v6M14 11v6" />
+                    </svg>
+                    <span className="hidden sm:inline">Hapus</span>
+                  </button>
 
-                {/* Delete active sub-brand */}
-                <button
-                  id="btn-delete-sub-brand"
-                  onClick={() => { if (activeBrand) setDeleteDialogBrand(activeBrand); }}
-                  disabled={!activeBrand}
-                  title={activeBrand ? `Hapus: ${activeBrand.name}` : "Pilih sub-brand terlebih dahulu"}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg border transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed text-red-400 border-red-400/25 bg-red-400/8 hover:bg-red-400/20 hover:border-red-400/50"
-                >
-                  {/* Trash2 icon */}
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-3.5 w-3.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 11v6M14 11v6" />
-                  </svg>
-                  <span className="hidden sm:inline">Hapus</span>
-                </button>
-
-                {/* Add sub-brand */}
-                <button
-                  id="btn-add-sub-brand"
-                  onClick={() => { setEditingBrand(null); setShowSubBrandModal(true); }}
-                  className="flex items-center justify-center gap-2 text-sm font-bold text-[#121212] bg-amber-bistro hover:bg-amber-bistro/90 px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                  Tambah Sub Brand
-                </button>
+                  {/* Add sub-brand */}
+                  <button
+                    id="btn-add-sub-brand"
+                    onClick={() => { setEditingBrand(null); setShowSubBrandModal(true); }}
+                    className="flex items-center justify-center gap-2 text-sm font-bold text-[#121212] bg-amber-bistro hover:bg-amber-bistro/90 px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Tambah Sub Brand
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1698,13 +1819,13 @@ export default function AdminDashboard() {
                       )}
                     </div>
                   </div>
-                  <div className="flex rounded-lg border border-white/10 overflow-hidden flex-shrink-0">
+                  <div className="flex flex-col items-start gap-1.5 flex-shrink-0">
                     {(["menu", "bestsellers"] as const).map((tab) => (
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`px-3 py-1.5 text-xs font-bold tracking-wider uppercase transition-colors ${
-                          activeTab === tab ? "bg-amber-bistro text-[#121212]" : "text-crema-300/60 hover:text-crema-50"
+                        className={`px-3 py-1.5 text-xs font-bold tracking-wider uppercase transition-colors rounded-lg border ${
+                          activeTab === tab ? "bg-amber-bistro text-[#121212] border-amber-bistro" : "text-crema-300/60 hover:text-crema-50 border-white/10 hover:border-white/20"
                         }`}
                       >
                         {tab === "menu" ? "Menu" : (
@@ -1726,21 +1847,21 @@ export default function AdminDashboard() {
 
                 {activeTab === "menu" && (
                   <SubCategorySection
-                    subBrandId={activeBrandId!}
+                    subBrandId={activeBrandId ?? ""}
                     subCategories={activeCats}
                     menus={menus}
                     bestSellers={activeBestSellers}
-                    onRefetchCategories={() => refetchSubCategories(activeBrandId!)}
+                    onRefetchCategories={() => refetchSubCategories(activeBrandId ?? "")}
                     onRefetchMenus={refetchMenus}
-                    onRefetchBestSellers={() => refetchBestSellers(activeBrandId!)}
+                    onRefetchBestSellers={() => refetchBestSellers(activeBrandId ?? "")}
                   />
                 )}
 
                 {activeTab === "bestsellers" && (
                   <BestSellersPanel
-                    subBrandId={activeBrandId!}
+                    subBrandId={activeBrandId ?? ""}
                     bestSellers={activeBestSellers}
-                    onRefetch={() => refetchBestSellers(activeBrandId!)}
+                    onRefetch={() => refetchBestSellers(activeBrandId ?? "")}
                   />
                 )}
               </div>
