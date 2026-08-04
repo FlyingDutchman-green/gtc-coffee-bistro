@@ -154,13 +154,14 @@ function ImageUploadField({
 
   return (
     <div>
-      <label className="block text-xs text-crema-300 mb-1">
+      <label htmlFor={id} className="block text-xs text-crema-300 mb-1">
         {label}{" "}
         <span className="text-crema-300/40 font-normal">(opsional)</span>
       </label>
       <input
         ref={inputRef}
         id={id}
+        name={id}
         type="file"
         accept="image/*"
         className="hidden"
@@ -188,8 +189,10 @@ function ImageUploadField({
             </div>
             <div className="p-5 flex flex-col gap-4">
               <div>
-                <label className="text-xs text-crema-300 block mb-2">Zoom</label>
+                <label htmlFor={`zoom-${id}`} className="text-xs text-crema-300 block mb-2">Zoom</label>
                 <input
+                  id={`zoom-${id}`}
+                  name={`zoom-${id}`}
                   type="range"
                   value={zoom}
                   min={1}
@@ -213,7 +216,7 @@ function ImageUploadField({
       )}
 
       {displaySrc ? (
-        <div className="relative w-full aspect-square rounded-lg overflow-hidden border border-white/10 group">
+        <div className="relative w-full aspect-square overflow-hidden rounded-lg border border-white/10 group">
           <Image
             src={displaySrc}
             alt="Preview"
@@ -222,11 +225,11 @@ function ImageUploadField({
             sizes="(max-width: 768px) 100vw, 400px"
             unoptimized={displaySrc.startsWith("blob:")}
           />
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-            <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="bg-amber-bistro text-[#121212] text-xs font-bold px-3 py-1.5 rounded-md hover:bg-amber-bistro/90 disabled:opacity-50">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center justify-center gap-2 w-max opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="bg-amber-bistro text-[#121212] text-xs font-bold px-3 py-1.5 rounded-md hover:bg-amber-bistro/90 disabled:opacity-50 shadow-[0_4px_12px_rgba(0,0,0,0.6)] whitespace-nowrap">
               Ganti Foto
             </button>
-            <button type="button" onClick={onClear} disabled={uploading} className="bg-red-500/80 text-white text-xs font-bold px-3 py-1.5 rounded-md hover:bg-red-500 disabled:opacity-50">
+            <button type="button" onClick={onClear} disabled={uploading} className="bg-red-500/80 text-white text-xs font-bold px-3 py-1.5 rounded-md hover:bg-red-500 disabled:opacity-50 shadow-[0_4px_12px_rgba(0,0,0,0.6)] whitespace-nowrap">
               Hapus
             </button>
           </div>
@@ -419,6 +422,8 @@ function SetBestSellerModal({ menu, subBrandId, onClose, onSaved }: SetBestSelle
           {/* Action Button */}
           <div className="mt-3 flex gap-2">
             <input 
+              id={`bs-file-input-${menu.id}`}
+              name={`bs-file-input-${menu.id}`}
               type="file" 
               ref={fileInputRef} 
               className="hidden" 
@@ -466,10 +471,12 @@ function SetBestSellerModal({ menu, subBrandId, onClose, onSaved }: SetBestSelle
         {/* User-input fields */}
         <div className="space-y-4">
           <div>
-            <label className="block text-xs text-crema-300 mb-1.5">
+            <label htmlFor={`bs-desc-${menu.id}`} className="block text-xs text-crema-300 mb-1.5">
               Deskripsi Best Seller <span className="text-amber-bistro">*</span>
             </label>
             <textarea
+              id={`bs-desc-${menu.id}`}
+              name={`bs-desc-${menu.id}`}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={saving}
@@ -479,8 +486,10 @@ function SetBestSellerModal({ menu, subBrandId, onClose, onSaved }: SetBestSelle
             />
           </div>
           <div>
-            <label className="block text-xs text-crema-300 mb-1.5">Badge / Tag</label>
+            <label htmlFor={`bs-badge-${menu.id}`} className="block text-xs text-crema-300 mb-1.5">Badge / Tag</label>
             <input
+              id={`bs-badge-${menu.id}`}
+              name={`bs-badge-${menu.id}`}
               type="text"
               value={badge}
               onChange={(e) => setBadge(e.target.value)}
@@ -531,8 +540,10 @@ function SetBestSellerModal({ menu, subBrandId, onClose, onSaved }: SetBestSelle
             </div>
             <div className="p-5 flex flex-col gap-4">
               <div>
-                <label className="text-xs text-crema-300 block mb-2">Zoom</label>
+                <label htmlFor={`bs-zoom-${menu.id}`} className="text-xs text-crema-300 block mb-2">Zoom</label>
                 <input
+                  id={`bs-zoom-${menu.id}`}
+                  name={`bs-zoom-${menu.id}`}
                   type="range"
                   value={zoom}
                   min={1}
@@ -638,20 +649,20 @@ function SubBrandModal({ editing, onClose, onSaved }: SubBrandModalProps) {
         </div>
         <div className="space-y-4">
           <div>
-            <label className="block text-xs text-crema-300 mb-1">Nama Sub-Brand *</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} disabled={saving}
+            <label htmlFor="sb-name" className="block text-xs text-crema-300 mb-1">Nama Sub-Brand *</label>
+            <input id="sb-name" name="sb-name" type="text" value={name} onChange={(e) => setName(e.target.value)} disabled={saving}
               placeholder="Contoh: MOURO, RAMENIKU..."
               className="w-full bg-[#121212] border border-white/10 rounded-md px-3 py-2 text-sm focus:border-amber-bistro outline-none disabled:opacity-50" />
           </div>
           <div>
-            <label className="block text-xs text-crema-300 mb-1">Deskripsi</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} rows={3}
+            <label htmlFor="sb-desc" className="block text-xs text-crema-300 mb-1">Deskripsi</label>
+            <textarea id="sb-desc" name="sb-desc" value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} rows={3}
               placeholder="Teaser singkat untuk kartu brand..."
               className="w-full bg-[#121212] border border-white/10 rounded-md px-3 py-2 text-sm focus:border-amber-bistro outline-none disabled:opacity-50 resize-none" />
           </div>
           <div>
-            <label className="block text-xs text-crema-300 mb-1">Icon Name</label>
-            <input type="text" value={iconName} onChange={(e) => setIconName(e.target.value)} disabled={saving}
+            <label htmlFor="sb-icon" className="block text-xs text-crema-300 mb-1">Icon Name</label>
+            <input id="sb-icon" name="sb-icon" type="text" value={iconName} onChange={(e) => setIconName(e.target.value)} disabled={saving}
               placeholder="coffee / ramen / noodle / chicken..."
               className="w-full bg-[#121212] border border-white/10 rounded-md px-3 py-2 text-sm focus:border-amber-bistro outline-none disabled:opacity-50" />
           </div>
@@ -920,8 +931,10 @@ function BestSellersPanel({ bestSellers, onRefetch }: BestSellersPanelProps) {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-crema-300 mb-1">Deskripsi Best Seller</label>
+                      <label htmlFor={`edit-bs-desc-${bs.id}`} className="block text-xs text-crema-300 mb-1">Deskripsi Best Seller</label>
                       <textarea
+                        id={`edit-bs-desc-${bs.id}`}
+                        name={`edit-bs-desc-${bs.id}`}
                         value={editForm.description}
                         onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
                         disabled={saving}
@@ -930,8 +943,10 @@ function BestSellersPanel({ bestSellers, onRefetch }: BestSellersPanelProps) {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-crema-300 mb-1">Badge / Tag</label>
+                      <label htmlFor={`edit-bs-badge-${bs.id}`} className="block text-xs text-crema-300 mb-1">Badge / Tag</label>
                       <input
+                        id={`edit-bs-badge-${bs.id}`}
+                        name={`edit-bs-badge-${bs.id}`}
                         type="text"
                         value={editForm.badge}
                         onChange={(e) => setEditForm((p) => ({ ...p, badge: e.target.value }))}
@@ -1218,8 +1233,10 @@ function SubCategorySection({
             </div>
             {/* Body */}
             <div>
-              <label className="block text-xs text-crema-300 mb-1.5">Nama Sub-Kategori <span className="text-amber-bistro">*</span></label>
+              <label htmlFor="new-cat-name" className="block text-xs text-crema-300 mb-1.5">Nama Sub-Kategori <span className="text-amber-bistro">*</span></label>
               <input
+                id="new-cat-name"
+                name="new-cat-name"
                 type="text"
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
@@ -1370,8 +1387,10 @@ function SubCategorySection({
                           {/* Body */}
                           <div className="space-y-4">
                             <div>
-                              <label className="block text-xs text-crema-300 mb-1.5">Nama Menu <span className="text-amber-bistro">*</span></label>
+                              <label htmlFor={`menu-name-${cat.id}`} className="block text-xs text-crema-300 mb-1.5">Nama Menu <span className="text-amber-bistro">*</span></label>
                               <input
+                                id={`menu-name-${cat.id}`}
+                                name={`menu-name-${cat.id}`}
                                 type="text"
                                 value={menuForm.name}
                                 onChange={(e) => setMenuForm((p) => ({ ...p, name: e.target.value }))}
@@ -1382,8 +1401,10 @@ function SubCategorySection({
                               />
                             </div>
                             <div>
-                              <label className="block text-xs text-crema-300 mb-1.5">Harga <span className="text-amber-bistro">*</span></label>
+                              <label htmlFor={`menu-price-${cat.id}`} className="block text-xs text-crema-300 mb-1.5">Harga <span className="text-amber-bistro">*</span></label>
                               <input
+                                id={`menu-price-${cat.id}`}
+                                name={`menu-price-${cat.id}`}
                                 type="text"
                                 value={menuForm.price}
                                 onChange={(e) => setMenuForm((p) => ({ ...p, price: e.target.value }))}
@@ -1467,7 +1488,7 @@ function SubCategorySection({
                                   <td className="px-2 py-2.5">
                                     {isEditingMenu ? (
                                       <div className="space-y-1.5">
-                                        <input type="text" value={editMenuForm.name}
+                                        <input id={`edit-menu-name-${menu.id}`} name={`edit-menu-name-${menu.id}`} type="text" value={editMenuForm.name}
                                           onChange={(e) => setEditMenuForm((p) => ({ ...p, name: e.target.value }))}
                                           disabled={editMenuSaving}
                                           className="w-full bg-[#121212] border border-white/20 rounded px-2 py-1 text-sm focus:border-amber-bistro outline-none" />
@@ -1490,7 +1511,7 @@ function SubCategorySection({
                                   {/* Price */}
                                   <td className="px-2 py-2.5">
                                     {isEditingMenu ? (
-                                      <input type="text" value={editMenuForm.price}
+                                      <input id={`edit-menu-price-${menu.id}`} name={`edit-menu-price-${menu.id}`} type="text" value={editMenuForm.price}
                                         onChange={(e) => setEditMenuForm((p) => ({ ...p, price: e.target.value }))}
                                         disabled={editMenuSaving}
                                         className="w-24 bg-[#121212] border border-white/20 rounded px-2 py-1 text-sm focus:border-amber-bistro outline-none font-mono" />

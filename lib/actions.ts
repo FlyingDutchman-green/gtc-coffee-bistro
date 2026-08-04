@@ -19,7 +19,7 @@ import { revalidatePath } from 'next/cache';
  *     by RLS to authenticated users for writes.
  */
 
-import { supabase } from '@/lib/supabase';
+import { createServerSupabase } from '@/lib/supabase-server';
 import type {
   SubBrand,
   SubCategory,
@@ -68,6 +68,7 @@ export async function subscribeNewsletter(
 // ══════════════════════════════════════════════════════════════════════════════
 
 export async function getSubBrands(): Promise<SubBrand[]> {
+  const supabase = await createServerSupabase();
   const { data, error } = await supabase
     .from('sub_brands')
     .select('*')
@@ -84,6 +85,7 @@ export async function createSubBrand(input: {
   item_count?: number;
   icon_name?: string;
 }): Promise<ActionResult<SubBrand>> {
+  const supabase = await createServerSupabase();
   if (!input.name.trim()) {
     return { success: false, error: 'Nama sub-brand wajib diisi.' };
   }
@@ -118,6 +120,7 @@ export async function updateSubBrand(
     icon_name: string;
   }>,
 ): Promise<ActionResult<SubBrand>> {
+  const supabase = await createServerSupabase();
   if (!id) return { success: false, error: 'ID wajib disertakan.' };
 
   const payload: Record<string, unknown> = {};
@@ -141,6 +144,7 @@ export async function updateSubBrand(
 }
 
 export async function deleteSubBrand(id: string): Promise<ActionResult> {
+  const supabase = await createServerSupabase();
   if (!id) return { success: false, error: 'ID wajib disertakan.' };
 
   const { error } = await supabase.from('sub_brands').delete().eq('id', id);
@@ -155,6 +159,7 @@ export async function deleteSubBrand(id: string): Promise<ActionResult> {
 // ══════════════════════════════════════════════════════════════════════════════
 
 export async function getSubCategories(sub_brand_id: string): Promise<SubCategory[]> {
+  const supabase = await createServerSupabase();
   const { data, error } = await supabase
     .from('sub_categories')
     .select('*')
@@ -169,6 +174,7 @@ export async function createSubCategory(input: {
   sub_brand_id: string;
   name: string;
 }): Promise<ActionResult<SubCategory>> {
+  const supabase = await createServerSupabase();
   if (!input.sub_brand_id || !input.name.trim()) {
     return { success: false, error: 'Sub-Brand ID dan nama sub-kategori wajib diisi.' };
   }
@@ -189,6 +195,7 @@ export async function updateSubCategory(
   id: string,
   name: string,
 ): Promise<ActionResult<SubCategory>> {
+  const supabase = await createServerSupabase();
   if (!id || !name.trim()) {
     return { success: false, error: 'ID dan nama wajib diisi.' };
   }
@@ -207,6 +214,7 @@ export async function updateSubCategory(
 }
 
 export async function deleteSubCategory(id: string): Promise<ActionResult> {
+  const supabase = await createServerSupabase();
   if (!id) return { success: false, error: 'ID wajib disertakan.' };
   const { error } = await supabase.from('sub_categories').delete().eq('id', id);
   if (error) return { success: false, error: error.message };
@@ -220,6 +228,7 @@ export async function deleteSubCategory(id: string): Promise<ActionResult> {
 // ══════════════════════════════════════════════════════════════════════════════
 
 export async function getMenus(sub_category_id: string): Promise<Menu[]> {
+  const supabase = await createServerSupabase();
   const { data, error } = await supabase
     .from('menus')
     .select('*')
@@ -236,6 +245,7 @@ export async function createMenu(input: {
   price: string;
   image_url?: string | null;
 }): Promise<ActionResult<Menu>> {
+  const supabase = await createServerSupabase();
   if (!input.sub_category_id || !input.name.trim() || !input.price.trim()) {
     return { success: false, error: 'Sub-Kategori, nama menu, dan harga wajib diisi.' };
   }
@@ -263,6 +273,7 @@ export async function updateMenu(
   id: string,
   input: Partial<{ name: string; price: string; image_url: string | null }>,
 ): Promise<ActionResult<Menu>> {
+  const supabase = await createServerSupabase();
   if (!id) return { success: false, error: 'ID wajib disertakan.' };
 
   const payload: Record<string, unknown> = {};
@@ -284,6 +295,7 @@ export async function updateMenu(
 }
 
 export async function deleteMenu(id: string): Promise<ActionResult> {
+  const supabase = await createServerSupabase();
   if (!id) return { success: false, error: 'ID wajib disertakan.' };
   const { error } = await supabase.from('menus').delete().eq('id', id);
   if (error) return { success: false, error: error.message };
@@ -297,6 +309,7 @@ export async function deleteMenu(id: string): Promise<ActionResult> {
 // ══════════════════════════════════════════════════════════════════════════════
 
 export async function getBestSellers(sub_brand_id: string): Promise<BestSeller[]> {
+  const supabase = await createServerSupabase();
   const { data, error } = await supabase
     .from('best_sellers')
     .select('*')
@@ -309,6 +322,7 @@ export async function getBestSellers(sub_brand_id: string): Promise<BestSeller[]
 
 /** Count how many best sellers a sub-brand already has (used in admin UI). */
 export async function countBestSellers(sub_brand_id: string): Promise<number> {
+  const supabase = await createServerSupabase();
   const { count, error } = await supabase
     .from('best_sellers')
     .select('id', { count: 'exact', head: true })
@@ -326,6 +340,7 @@ export async function createBestSeller(input: {
   badge?: string;
   image_url?: string | null;
 }): Promise<ActionResult<BestSeller>> {
+  const supabase = await createServerSupabase();
   try {
     if (!input.name.trim() || !input.sub_brand_id) {
       return { success: false, error: 'Sub-Brand ID dan Nama best-seller wajib diisi.' };
@@ -366,8 +381,8 @@ export async function createBestSeller(input: {
     revalidatePath('/');
     revalidatePath('/admin');
     return { success: true, data: data as BestSeller };
-  } catch (error: any) {
-    return { success: false, error: error.message || 'Terjadi kesalahan pada server' };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Terjadi kesalahan pada server' };
   }
 }
 
@@ -381,6 +396,7 @@ export async function updateBestSeller(
     image_url: string | null;
   }>,
 ): Promise<ActionResult<BestSeller>> {
+  const supabase = await createServerSupabase();
   if (!id) return { success: false, error: 'ID wajib disertakan.' };
 
   const payload: Record<string, unknown> = {};
@@ -404,6 +420,7 @@ export async function updateBestSeller(
 }
 
 export async function deleteBestSeller(id: string): Promise<ActionResult> {
+  const supabase = await createServerSupabase();
   if (!id) return { success: false, error: 'ID wajib disertakan.' };
   const { error } = await supabase.from('best_sellers').delete().eq('id', id);
   if (error) return { success: false, error: error.message };
