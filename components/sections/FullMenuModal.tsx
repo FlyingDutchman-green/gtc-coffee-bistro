@@ -1,76 +1,175 @@
 "use client";
 
+/**
+ * FullMenuModal — reads EXCLUSIVELY from SubBrandContext (sub_brands →
+ * sub_categories → menus tables in Supabase).
+ *
+ * Previous implementation read from MenuContext / INITIAL_MENU_DATA which is
+ * a flat legacy model written only at seed-time.  Any sub-brand added via the
+ * admin panel goes into the relational model (sub_brands, sub_categories,
+ * menus) and would therefore never appear in the old implementation.
+ *
+ * New implementation:
+ *  • Tab bar   → subBrands[]            (fetched from sub_brands table)
+ *  • Sections  → subCategories[brandId] (fetched from sub_categories table)
+ *  • Items     → menus[subCatId]        (fetched from menus table)
+ *
+ * Data is fetched lazily (on first tab open) and cached in SubBrandContext
+ * state, so switching tabs after initial load is instant with zero network
+ * requests.  Newly added sub-brands appear automatically because subBrands is
+ * derived from a live Supabase query in SubBrandContext.
+ */
+
 import { useState, useEffect } from "react";
 import Image from "next/image";
-
-import { useMenu } from "@/context/MenuContext";
+import { useSubBrand } from "@/context/SubBrandContext";
+import type { SubBrand, SubCategory, Menu } from "@/lib/types";
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * Helper: konversi harga integer ke format "XK" atau "X.5K"
- * 15000 → "15K" | 17500 → "17.5K" | 20500 → "20.5K"
+ * Helpers
  * ───────────────────────────────────────────────────────────────────────────── */
-function formatPrice(price: number): string {
-  const k = price / 1000;
-  return `${k % 1 === 0 ? k.toFixed(0) : k}K`;
+
+/**
+ * Convert a raw price string from the DB to compact "XK" / "X.5K" format.
+ * Handles both plain integers ("25000") and already-formatted strings ("25K").
+ */
+function formatPriceK(raw: string): string {
+  const cleaned = raw.replace(/[^0-9]/g, "");
+  const n = parseInt(cleaned, 10);
+  if (isNaN(n)) return raw;
+  if (n >= 1000) {
+    const k = n / 1000;
+    return k % 1 === 0 ? `${k}K` : `${k.toFixed(1)}K`;
+  }
+  return raw;
+}
+
+/**
+ * Parse a raw price string to an integer for locale formatting.
+ * Falls back to 0 on parse failure.
+ */
+function parsePriceInt(raw: string): number {
+  const n = parseInt(raw.replace(/[^0-9]/g, ""), 10);
+  return isNaN(n) ? 0 : n;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * Interface untuk selected item
+ * Types
  * ───────────────────────────────────────────────────────────────────────────── */
+
 interface SelectedMenuItem {
-  id?: number;
+  id?: string;
   name: string;
-  price: number;
+  priceRaw: string;
   image_url?: string;
   category: string;
-  description?: string;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * Props
+ * Props  (interface kept identical to the old implementation so all callers —
+ * MenuGrid.tsx and MenuCategoryTabs.tsx — require zero changes)
  * ───────────────────────────────────────────────────────────────────────────── */
 export interface FullMenuModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Currently-active brand name string (matched against SubBrand.name). */
   activeCategory: string;
   setActiveCategory: (cat: string) => void;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * Komponen modal
+ * FullMenuModal
  * ───────────────────────────────────────────────────────────────────────────── */
-export function FullMenuModal({ isOpen, onClose, activeCategory, setActiveCategory }: FullMenuModalProps) {
+export function FullMenuModal({
+  isOpen,
+  onClose,
+  activeCategory,
+  setActiveCategory,
+}: FullMenuModalProps) {
+  /* ── Animation state ───────────────────────────────────────────────────── */
   const [show, setShow] = useState(false);
   const [selectedItem, setSelectedItem] = useState<SelectedMenuItem | null>(null);
   const [detailShow, setDetailShow] = useState(false);
-  const { menuData, categories } = useMenu();
 
-  /* Pastikan activeCategory selalu valid — fallback ke tab pertama */
-  const resolvedCategory = categories.includes(activeCategory)
-    ? activeCategory
-    : categories[0] || "";
+  /* ── Data from SubBrandContext (live Supabase relational model) ─────────── */
+  const {
+    subBrands,
+    subCategories,
+    menus,
+    refetchSubCategories,
+    refetchMenus,
+    isLoadingCategories,
+  } = useSubBrand();
 
+  /* ── Resolve active brand by name (case-sensitive).
+        Falls back to first brand when name not yet in list (e.g. on initial
+        render before subBrands loads). ────────────────────────────────────── */
+  const resolvedBrand: SubBrand | undefined =
+    subBrands.find((b) => b.name === activeCategory) ?? subBrands[0];
+
+  const activeBrandId = resolvedBrand?.id ?? null;
+
+  /* ── Derived data for the currently-active brand ───────────────────────── */
+  const activeCats: SubCategory[] = activeBrandId
+    ? (subCategories[activeBrandId] ?? [])
+    : [];
+
+  const totalItems = activeCats.reduce(
+    (sum, cat) => sum + (menus[cat.id]?.length ?? 0),
+    0,
+  );
+
+  /* ── Whether menus are still being fetched for the active brand ─────────── */
+  const isLoadingMenus =
+    activeCats.length > 0 &&
+    activeCats.every((cat) => menus[cat.id] === undefined);
+
+  /* ── Body-scroll lock + open animation ─────────────────────────────────── */
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
-      const timer = setTimeout(() => setShow(true), 10);
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setShow(true), 10);
+      return () => clearTimeout(t);
     } else {
       setShow(false);
       document.body.style.overflow = "";
     }
   }, [isOpen]);
 
-  /* Animasi masuk detail modal */
+  /* ── Fetch sub-categories when active brand changes or modal opens ────────
+     Always re-fetches to guarantee freshness (SubBrandContext is idempotent:
+     results overwrite existing state, so double-fetches are harmless). ────── */
+  useEffect(() => {
+    if (!activeBrandId || !isOpen) return;
+    refetchSubCategories(activeBrandId);
+  }, [activeBrandId, isOpen, refetchSubCategories]);
+
+  /* ── Fetch menus for every sub-category of the active brand ─────────────
+     Runs whenever subCategories updates (i.e. after the above effect
+     completes) or the active brand changes.  The `if (!menus[cat.id])` guard
+     skips already-fetched sub-categories so switching back to a previous tab
+     requires no network round-trip. ─────────────────────────────────────── */
+  useEffect(() => {
+    if (!activeBrandId) return;
+    const cats = subCategories[activeBrandId] ?? [];
+    cats.forEach((cat) => {
+      if (!menus[cat.id]) {
+        refetchMenus(cat.id);
+      }
+    });
+  }, [activeBrandId, subCategories, menus, refetchMenus]);
+
+  /* ── Detail modal animation ─────────────────────────────────────────────── */
   useEffect(() => {
     if (selectedItem) {
-      const timer = setTimeout(() => setDetailShow(true), 10);
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setDetailShow(true), 10);
+      return () => clearTimeout(t);
     } else {
       setDetailShow(false);
     }
   }, [selectedItem]);
 
+  /* ── Handlers ───────────────────────────────────────────────────────────── */
   const handleClose = () => {
     setShow(false);
     setTimeout(() => onClose(), 300);
@@ -81,36 +180,42 @@ export function FullMenuModal({ isOpen, onClose, activeCategory, setActiveCatego
     setTimeout(() => setSelectedItem(null), 250);
   };
 
+  const handleSelectTab = (brand: SubBrand) => {
+    setActiveCategory(brand.name);
+  };
+
   if (!isOpen) return null;
 
-  const subCategories = menuData[resolvedCategory] ?? {};
-
-  // Calculate total items
-  let totalItems = 0;
-  if (menuData[resolvedCategory]) {
-    totalItems = Object.values(menuData[resolvedCategory]).reduce((sum, items) => sum + items.length, 0);
-  }
-
+  /* ── Render ─────────────────────────────────────────────────────────────── */
   return (
     <>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
         {/* Backdrop */}
         <div
-          className={`absolute inset-0 bg-[#121212]/95 backdrop-blur-md transition-opacity duration-300 ${show ? "opacity-100" : "opacity-0"}`}
+          className={`absolute inset-0 bg-[#121212]/95 backdrop-blur-md transition-opacity duration-300 ${
+            show ? "opacity-100" : "opacity-0"
+          }`}
           onClick={handleClose}
           aria-hidden="true"
         />
 
         {/* Modal Box */}
         <div
-          className={`relative w-full max-w-2xl bg-[#121212] border border-amber-bistro/30 shadow-[0_0_40px_rgba(212,146,78,0.1)] rounded-2xl overflow-hidden flex flex-col transition-all duration-300 ease-out ${show ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-4"}`}
+          className={`relative w-full max-w-2xl bg-[#121212] border border-amber-bistro/30 shadow-[0_0_40px_rgba(212,146,78,0.1)] rounded-2xl overflow-hidden flex flex-col transition-all duration-300 ease-out ${
+            show
+              ? "opacity-100 scale-100 translate-y-0"
+              : "opacity-0 scale-95 translate-y-4"
+          }`}
           role="dialog"
           aria-modal="true"
           aria-labelledby="menu-title"
         >
-          {/* Header */}
+          {/* ── Header ──────────────────────────────────────────────────────── */}
           <div className="flex items-center justify-between border-b border-crema-50/10 px-6 py-5 bg-[#151515] shrink-0">
-            <h2 id="menu-title" className="font-sans text-xl font-bold text-amber-bistro tracking-[0.2em] uppercase leading-none">
+            <h2
+              id="menu-title"
+              className="font-sans text-xl font-bold text-amber-bistro tracking-[0.2em] uppercase leading-none"
+            >
               FULL MENU
             </h2>
             <button
@@ -118,110 +223,184 @@ export function FullMenuModal({ isOpen, onClose, activeCategory, setActiveCatego
               className="text-crema-300/50 hover:text-crema-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-bistro rounded-full p-1 -mt-1 -mr-1"
               aria-label="Close modal"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-5 h-5" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                className="w-5 h-5"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
 
-          {/* Category Tabs */}
-          <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] border-b border-crema-50/10 bg-[#151515] shrink-0">
-            {categories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`flex-shrink-0 px-4 py-4 text-[10px] font-bold tracking-widest uppercase transition-colors relative focus-visible:outline-none focus-visible:bg-crema-50/5 ${
-                  resolvedCategory === cat ? "text-amber-bistro" : "text-crema-300/50 hover:text-crema-50"
-                }`}
-              >
-                {cat}
-                {resolvedCategory === cat && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-amber-bistro" />
-                )}
-              </button>
-            ))}
+          {/* ── Brand Tab Navigation (fully dynamic — every SubBrand = one tab) ── */}
+          <div
+            className="flex flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] border-b border-crema-50/10 bg-[#151515] shrink-0"
+            role="tablist"
+            aria-label="Sub-brand menu categories"
+          >
+            {subBrands.length === 0 ? (
+              /* Skeleton placeholders while subBrands are loading */
+              [1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="flex-shrink-0 mx-2 my-4 h-3 w-16 rounded bg-crema-50/10 animate-pulse"
+                />
+              ))
+            ) : (
+              subBrands.map((brand) => {
+                const isActive = resolvedBrand?.id === brand.id;
+                return (
+                  <button
+                    key={brand.id}
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => handleSelectTab(brand)}
+                    className={`flex-shrink-0 px-4 py-4 text-[10px] font-bold tracking-widest uppercase transition-colors relative focus-visible:outline-none focus-visible:bg-crema-50/5 ${
+                      isActive
+                        ? "text-amber-bistro"
+                        : "text-crema-300/50 hover:text-crema-50"
+                    }`}
+                  >
+                    {brand.name}
+                    {isActive && (
+                      <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-amber-bistro" />
+                    )}
+                  </button>
+                );
+              })
+            )}
           </div>
 
-          {/* Brand + total item badge */}
+          {/* ── Brand label + total item count badge ────────────────────────── */}
           <div className="px-6 pt-4 pb-1 flex items-center gap-2 shrink-0">
             <span className="text-[10px] tracking-[0.2em] uppercase text-amber-bistro font-medium">
-              {resolvedCategory}
+              {resolvedBrand?.name ?? ""}
             </span>
             <span className="text-[10px] text-crema-300/40 font-medium">
               — {totalItems} item
             </span>
           </div>
 
-          {/* Menu Items dengan sub-kategori sticky header */}
+          {/* ── Menu items with sticky sub-category section headers ───────────── */}
           <div className="px-6 pb-4 overflow-y-auto max-h-[60vh] flex flex-col">
-            {Object.entries(subCategories).map(([subCat, items]) => (
-              <div key={subCat} className="mb-2">
-                {/* Sub-kategori sticky header */}
-                <div className="sticky top-0 z-10 bg-[#121212]/98 backdrop-blur-sm py-2 mb-1">
-                  <p className="text-[9px] tracking-[0.22em] uppercase text-amber-bistro/70 font-bold border-b border-amber-bistro/15 pb-1.5">
-                    {subCat}
-                  </p>
-                </div>
-                {/* Item rows — clickable */}
-                {items.map((item, idx) => (
-                  <button
-                    key={`${subCat}-${idx}`}
-                    onClick={() =>
-                      setSelectedItem({
-                        id: item.id,
-                        name: item.name,
-                        price: item.price,
-                        image_url: item.image_url ?? undefined,
-                        category: subCat,
-                        description: undefined,
-                      })
-                    }
-                    className="w-full flex items-center justify-between gap-4 py-3 border-b border-white/5 last:border-0 text-left group hover:bg-amber-bistro/5 active:bg-amber-bistro/10 rounded-lg px-2 -mx-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-bistro/50"
-                    aria-label={`Lihat detail ${item.name}`}
-                  >
-                    <span className="text-[13px] font-medium text-crema-50 tracking-wide leading-snug group-hover:text-amber-bistro transition-colors duration-150">
-                      {item.name}
-                    </span>
-                    <span className="font-mono text-[13px] font-bold text-amber-bistro whitespace-nowrap shrink-0">
-                      {formatPrice(item.price)}
-                    </span>
-                  </button>
+            {/* Loading state — sub-categories not yet fetched */}
+            {(isLoadingCategories && activeCats.length === 0) ||
+            isLoadingMenus ? (
+              <div className="flex flex-col gap-3 py-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className="h-10 rounded-lg bg-crema-50/5 animate-pulse"
+                  />
                 ))}
               </div>
-            ))}
+            ) : activeCats.length === 0 ? (
+              /* Empty state — no sub-categories for this brand yet */
+              <p className="py-8 text-center text-sm text-crema-300/40 italic">
+                Belum ada kategori untuk brand ini.
+              </p>
+            ) : (
+              activeCats.map((cat: SubCategory) => {
+                const items: Menu[] = menus[cat.id] ?? [];
+                return (
+                  <div key={cat.id} className="mb-2">
+                    {/* Sticky sub-category header */}
+                    <div className="sticky top-0 z-10 bg-[#121212]/98 backdrop-blur-sm py-2 mb-1">
+                      <p className="text-[9px] tracking-[0.22em] uppercase text-amber-bistro/70 font-bold border-b border-amber-bistro/15 pb-1.5">
+                        {cat.name}
+                      </p>
+                    </div>
+
+                    {/* Item rows */}
+                    {items.length === 0 ? (
+                      <p className="text-[12px] text-crema-300/30 italic py-2 px-2">
+                        Belum ada item.
+                      </p>
+                    ) : (
+                      items.map((item: Menu, idx: number) => (
+                        <button
+                          key={`${cat.id}-${idx}`}
+                          onClick={() =>
+                            setSelectedItem({
+                              id: item.id,
+                              name: item.name,
+                              priceRaw: item.price,
+                              image_url: item.image_url ?? undefined,
+                              category: cat.name,
+                            })
+                          }
+                          className="w-full flex items-center justify-between gap-4 py-3 border-b border-white/5 last:border-0 text-left group hover:bg-amber-bistro/5 active:bg-amber-bistro/10 rounded-lg px-2 -mx-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-bistro/50"
+                          aria-label={`Lihat detail ${item.name}`}
+                        >
+                          <span className="text-[13px] font-medium text-crema-50 tracking-wide leading-snug group-hover:text-amber-bistro transition-colors duration-150">
+                            {item.name}
+                          </span>
+                          <span className="font-mono text-[13px] font-bold text-amber-bistro whitespace-nowrap shrink-0">
+                            {formatPriceK(item.price)}
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
 
-      {/* ── Detail Menu Modal ──────────────────────────────────────────────── */}
+      {/* ── Item Detail Modal ───────────────────────────────────────────────── */}
       {selectedItem && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6">
-          {/* Backdrop Detail */}
+          {/* Backdrop */}
           <div
-            className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-250 ${detailShow ? "opacity-100" : "opacity-0"}`}
+            className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-[250ms] ${
+              detailShow ? "opacity-100" : "opacity-0"
+            }`}
             onClick={handleCloseDetail}
             aria-hidden="true"
           />
 
           {/* Detail Card */}
           <div
-            className={`relative w-full max-w-md max-h-[90vh] flex flex-col bg-white rounded-3xl overflow-hidden shadow-2xl transition-all duration-250 ease-out ${detailShow ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-4"}`}
+            className={`relative w-full max-w-md max-h-[90vh] flex flex-col bg-white rounded-3xl overflow-hidden shadow-2xl transition-all duration-[250ms] ease-out ${
+              detailShow
+                ? "opacity-100 scale-100 translate-y-0"
+                : "opacity-0 scale-95 translate-y-4"
+            }`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="detail-menu-title"
           >
-            {/* Tombol Close pojok kanan atas */}
+            {/* Close button */}
             <button
               onClick={handleCloseDetail}
               className="absolute top-3 right-3 z-20 bg-white/90 hover:bg-white text-gray-600 hover:text-gray-900 transition-all duration-150 rounded-full p-1.5 shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               aria-label="Tutup detail menu"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                className="w-4 h-4"
+                strokeWidth={2.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
 
-            {/* Gambar Produk */}
+            {/* Product Image */}
             <div className="relative w-full aspect-square shrink-0 bg-gray-100 overflow-hidden">
               {selectedItem.image_url ? (
                 <Image
@@ -232,7 +411,6 @@ export function FullMenuModal({ isOpen, onClose, activeCategory, setActiveCatego
                   sizes="(max-width: 768px) 100vw, 448px"
                 />
               ) : (
-                /* Placeholder jika tidak ada gambar */
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-gray-100 to-gray-200">
                   <svg
                     viewBox="0 0 64 64"
@@ -255,14 +433,14 @@ export function FullMenuModal({ isOpen, onClose, activeCategory, setActiveCatego
               )}
             </div>
 
-            {/* Content Area */}
+            {/* Content */}
             <div className="px-6 py-5 text-gray-900 overflow-y-auto">
-              {/* Badge Kategori */}
+              {/* Category badge */}
               <span className="inline-block px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase bg-amber-100 text-amber-700 mb-3">
                 {selectedItem.category}
               </span>
 
-              {/* Nama Menu */}
+              {/* Item name */}
               <h3
                 id="detail-menu-title"
                 className="text-xl font-bold text-gray-900 leading-tight mb-3"
@@ -270,20 +448,14 @@ export function FullMenuModal({ isOpen, onClose, activeCategory, setActiveCatego
                 {selectedItem.name}
               </h3>
 
-              {/* Deskripsi (jika ada) */}
-              {selectedItem.description && (
-                <p className="text-sm text-gray-500 leading-relaxed mb-4">
-                  {selectedItem.description}
-                </p>
-              )}
-
-              {/* Harga */}
+              {/* Price */}
               <div className="flex items-center justify-between mt-2 pt-4 border-t border-gray-100">
                 <span className="text-[11px] uppercase tracking-widest text-gray-400 font-medium">
                   Harga
                 </span>
                 <span className="text-2xl font-black text-amber-600 tracking-tight">
-                  Rp {selectedItem.price.toLocaleString("id-ID")}
+                  Rp{" "}
+                  {parsePriceInt(selectedItem.priceRaw).toLocaleString("id-ID")}
                 </span>
               </div>
             </div>

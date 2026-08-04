@@ -287,8 +287,16 @@ export function MenuProvider({ children }: { children: ReactNode }) {
   const [menuData, setMenuData] = useState<MenuData>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  // Default categories to show tabs even when empty
-  const categories = Object.keys(INITIAL_MENU_DATA);
+  // Derive categories dynamically from live menuData so that newly added
+  // brands fetched from Supabase appear in MenuCategoryTabs' card grid.
+  // NOTE: FullMenuModal no longer reads from this context — it reads directly
+  // from SubBrandContext (sub_brands → sub_categories → menus) which is the
+  // canonical live-data source for all newly-created sub-brands.
+  // Fall back to INITIAL_MENU_DATA keys while menuData is still loading.
+  const categories =
+    Object.keys(menuData).length > 0
+      ? Object.keys(menuData)
+      : Object.keys(INITIAL_MENU_DATA);
 
   useEffect(() => {
     async function loadData() {
