@@ -4,20 +4,17 @@
  * FullMenuModal — reads EXCLUSIVELY from SubBrandContext (sub_brands →
  * sub_categories → menus tables in Supabase).
  *
- * Previous implementation read from MenuContext / INITIAL_MENU_DATA which is
- * a flat legacy model written only at seed-time.  Any sub-brand added via the
- * admin panel goes into the relational model (sub_brands, sub_categories,
- * menus) and would therefore never appear in the old implementation.
+ * Data flow:
+ *  • Tab bar  → subBrands[]            (sub_brands table, fetched on mount)
+ *  • Sections → subCategories[brandId] (sub_categories table)
+ *  • Items    → menus[subCatId]        (menus table)
  *
- * New implementation:
- *  • Tab bar   → subBrands[]            (fetched from sub_brands table)
- *  • Sections  → subCategories[brandId] (fetched from sub_categories table)
- *  • Items     → menus[subCatId]        (fetched from menus table)
+ * All sub-categories + their menus are fetched in exactly 2 Supabase queries
+ * per tab via refetchMenusForBrand(), replacing the old N+1 pattern that caused
+ * sub-categories to render as empty while their menus were still in-flight.
  *
- * Data is fetched lazily (on first tab open) and cached in SubBrandContext
- * state, so switching tabs after initial load is instant with zero network
- * requests.  Newly added sub-brands appear automatically because subBrands is
- * derived from a live Supabase query in SubBrandContext.
+ * totalItems is computed after the batch completes so it always matches the
+ * actual item count visible in the admin dashboard.
  */
 
 import { useState, useEffect } from "react";
@@ -29,10 +26,7 @@ import type { SubBrand, SubCategory, Menu } from "@/lib/types";
  * Helpers
  * ───────────────────────────────────────────────────────────────────────────── */
 
-/**
- * Convert a raw price string from the DB to compact "XK" / "X.5K" format.
- * Handles both plain integers ("25000") and already-formatted strings ("25K").
- */
+/** Convert a raw price string ("25000") to compact "25K" / "25.5K" format. */
 function formatPriceK(raw: string): string {
   const cleaned = raw.replace(/[^0-9]/g, "");
   const n = parseInt(cleaned, 10);
@@ -44,10 +38,7 @@ function formatPriceK(raw: string): string {
   return raw;
 }
 
-/**
- * Parse a raw price string to an integer for locale formatting.
- * Falls back to 0 on parse failure.
- */
+/** Parse a raw price string to an integer for Indonesian locale formatting. */
 function parsePriceInt(raw: string): number {
   const n = parseInt(raw.replace(/[^0-9]/g, ""), 10);
   return isNaN(n) ? 0 : n;
@@ -66,13 +57,13 @@ interface SelectedMenuItem {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * Props  (interface kept identical to the old implementation so all callers —
- * MenuGrid.tsx and MenuCategoryTabs.tsx — require zero changes)
+ * Props  — identical interface to previous implementation so all callers
+ * (MenuGrid.tsx, MenuCategoryTabs.tsx) require zero changes.
  * ───────────────────────────────────────────────────────────────────────────── */
 export interface FullMenuModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Currently-active brand name string (matched against SubBrand.name). */
+  /** Currently-active brand name (matched against SubBrand.name). */
   activeCategory: string;
   setActiveCategory: (cat: string) => void;
 }
@@ -86,45 +77,42 @@ export function FullMenuModal({
   activeCategory,
   setActiveCategory,
 }: FullMenuModalProps) {
-  /* ── Animation state ───────────────────────────────────────────────────── */
+  /* ── Animation state ─────────────────────────────────────────────────────── */
   const [show, setShow] = useState(false);
   const [selectedItem, setSelectedItem] = useState<SelectedMenuItem | null>(null);
   const [detailShow, setDetailShow] = useState(false);
 
-  /* ── Data from SubBrandContext (live Supabase relational model) ─────────── */
+  /* ── Live data from SubBrandContext ─────────────────────────────────────── */
   const {
     subBrands,
     subCategories,
     menus,
-    refetchSubCategories,
-    refetchMenus,
+    refetchMenusForBrand,  // batch loader: 2 queries instead of N+1
     isLoadingCategories,
   } = useSubBrand();
 
-  /* ── Resolve active brand by name (case-sensitive).
-        Falls back to first brand when name not yet in list (e.g. on initial
-        render before subBrands loads). ────────────────────────────────────── */
+  /* ── Resolve the active brand object from the name prop ─────────────────── */
   const resolvedBrand: SubBrand | undefined =
     subBrands.find((b) => b.name === activeCategory) ?? subBrands[0];
 
   const activeBrandId = resolvedBrand?.id ?? null;
 
-  /* ── Derived data for the currently-active brand ───────────────────────── */
+  /* ── Sub-categories for the active brand ────────────────────────────────── */
   const activeCats: SubCategory[] = activeBrandId
     ? (subCategories[activeBrandId] ?? [])
     : [];
 
+  /**
+   * Total item count — sum over all sub-categories of the active brand.
+   * After refetchMenusForBrand completes, every sub-cat slot is pre-filled
+   * with [] (even if empty), so this accurately reflects the Supabase count.
+   */
   const totalItems = activeCats.reduce(
     (sum, cat) => sum + (menus[cat.id]?.length ?? 0),
     0,
   );
 
-  /* ── Whether menus are still being fetched for the active brand ─────────── */
-  const isLoadingMenus =
-    activeCats.length > 0 &&
-    activeCats.every((cat) => menus[cat.id] === undefined);
-
-  /* ── Body-scroll lock + open animation ─────────────────────────────────── */
+  /* ── Body-scroll lock + open animation ──────────────────────────────────── */
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -136,30 +124,17 @@ export function FullMenuModal({
     }
   }, [isOpen]);
 
-  /* ── Fetch sub-categories when active brand changes or modal opens ────────
-     Always re-fetches to guarantee freshness (SubBrandContext is idempotent:
-     results overwrite existing state, so double-fetches are harmless). ────── */
+  /* ── Batch-fetch sub-categories + all their menus (2 queries total) ────────
+     Called whenever the active brand or open state changes.
+     refetchMenusForBrand pre-fills every sub-cat slot with [] so all sections
+     render correctly in a single state update, eliminating the "Belum ada item"
+     flash that the old N+1 approach caused. ─────────────────────────────────── */
   useEffect(() => {
     if (!activeBrandId || !isOpen) return;
-    refetchSubCategories(activeBrandId);
-  }, [activeBrandId, isOpen, refetchSubCategories]);
+    refetchMenusForBrand(activeBrandId);
+  }, [activeBrandId, isOpen, refetchMenusForBrand]);
 
-  /* ── Fetch menus for every sub-category of the active brand ─────────────
-     Runs whenever subCategories updates (i.e. after the above effect
-     completes) or the active brand changes.  The `if (!menus[cat.id])` guard
-     skips already-fetched sub-categories so switching back to a previous tab
-     requires no network round-trip. ─────────────────────────────────────── */
-  useEffect(() => {
-    if (!activeBrandId) return;
-    const cats = subCategories[activeBrandId] ?? [];
-    cats.forEach((cat) => {
-      if (!menus[cat.id]) {
-        refetchMenus(cat.id);
-      }
-    });
-  }, [activeBrandId, subCategories, menus, refetchMenus]);
-
-  /* ── Detail modal animation ─────────────────────────────────────────────── */
+  /* ── Detail modal open animation ────────────────────────────────────────── */
   useEffect(() => {
     if (selectedItem) {
       const t = setTimeout(() => setDetailShow(true), 10);
@@ -169,7 +144,7 @@ export function FullMenuModal({
     }
   }, [selectedItem]);
 
-  /* ── Handlers ───────────────────────────────────────────────────────────── */
+  /* ── Handlers ────────────────────────────────────────────────────────────── */
   const handleClose = () => {
     setShow(false);
     setTimeout(() => onClose(), 300);
@@ -186,7 +161,7 @@ export function FullMenuModal({
 
   if (!isOpen) return null;
 
-  /* ── Render ─────────────────────────────────────────────────────────────── */
+  /* ── Render ──────────────────────────────────────────────────────────────── */
   return (
     <>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
@@ -210,7 +185,7 @@ export function FullMenuModal({
           aria-modal="true"
           aria-labelledby="menu-title"
         >
-          {/* ── Header ──────────────────────────────────────────────────────── */}
+          {/* ── Header ────────────────────────────────────────────────────────── */}
           <div className="flex items-center justify-between border-b border-crema-50/10 px-6 py-5 bg-[#151515] shrink-0">
             <h2
               id="menu-title"
@@ -239,14 +214,14 @@ export function FullMenuModal({
             </button>
           </div>
 
-          {/* ── Brand Tab Navigation (fully dynamic — every SubBrand = one tab) ── */}
+          {/* ── Brand Tab Navigation (one tab per sub_brand row in Supabase) ──── */}
           <div
             className="flex flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] border-b border-crema-50/10 bg-[#151515] shrink-0"
             role="tablist"
             aria-label="Sub-brand menu categories"
           >
             {subBrands.length === 0 ? (
-              /* Skeleton placeholders while subBrands are loading */
+              /* Skeleton tabs while subBrands are loading */
               [1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
@@ -278,7 +253,7 @@ export function FullMenuModal({
             )}
           </div>
 
-          {/* ── Brand label + total item count badge ────────────────────────── */}
+          {/* ── Brand label + live item count ─────────────────────────────────── */}
           <div className="px-6 pt-4 pb-1 flex items-center gap-2 shrink-0">
             <span className="text-[10px] tracking-[0.2em] uppercase text-amber-bistro font-medium">
               {resolvedBrand?.name ?? ""}
@@ -288,11 +263,10 @@ export function FullMenuModal({
             </span>
           </div>
 
-          {/* ── Menu items with sticky sub-category section headers ───────────── */}
+          {/* ── Sub-category sections + menu items ────────────────────────────── */}
           <div className="px-6 pb-4 overflow-y-auto max-h-[60vh] flex flex-col">
-            {/* Loading state — sub-categories not yet fetched */}
-            {(isLoadingCategories && activeCats.length === 0) ||
-            isLoadingMenus ? (
+            {/* Overall loading state: batch fetch in progress, no cats yet */}
+            {isLoadingCategories && activeCats.length === 0 ? (
               <div className="flex flex-col gap-3 py-4">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <div
@@ -302,13 +276,20 @@ export function FullMenuModal({
                 ))}
               </div>
             ) : activeCats.length === 0 ? (
-              /* Empty state — no sub-categories for this brand yet */
+              /* Brand has no sub-categories yet */
               <p className="py-8 text-center text-sm text-crema-300/40 italic">
                 Belum ada kategori untuk brand ini.
               </p>
             ) : (
               activeCats.map((cat: SubCategory) => {
-                const items: Menu[] = menus[cat.id] ?? [];
+                /**
+                 * undefined  → batch not yet finished for this cat (race guard;
+                 *              normally the batch fills ALL cats in one setState)
+                 * []         → fetched, genuinely empty sub-category
+                 * [...items] → fetched with data — render all items
+                 */
+                const items: Menu[] | undefined = menus[cat.id];
+
                 return (
                   <div key={cat.id} className="mb-2">
                     {/* Sticky sub-category header */}
@@ -318,8 +299,11 @@ export function FullMenuModal({
                       </p>
                     </div>
 
-                    {/* Item rows */}
-                    {items.length === 0 ? (
+                    {items === undefined ? (
+                      /* Per-cat skeleton — only during a race condition; the
+                         batch loader normally fills all cats simultaneously. */
+                      <div className="h-8 rounded bg-crema-50/5 animate-pulse mb-1" />
+                    ) : items.length === 0 ? (
                       <p className="text-[12px] text-crema-300/30 italic py-2 px-2">
                         Belum ada item.
                       </p>
@@ -356,7 +340,7 @@ export function FullMenuModal({
         </div>
       </div>
 
-      {/* ── Item Detail Modal ───────────────────────────────────────────────── */}
+      {/* ── Item Detail Modal ─────────────────────────────────────────────────── */}
       {selectedItem && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6">
           {/* Backdrop */}

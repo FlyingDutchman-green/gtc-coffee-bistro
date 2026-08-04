@@ -39,6 +39,8 @@ interface SubBrandContextType {
   refetchSubBrands: () => Promise<void>;
   refetchSubCategories: (sub_brand_id: string) => Promise<void>;
   refetchMenus: (sub_category_id: string) => Promise<void>;
+  /** Batch: fetches sub-categories + ALL their menus in 2 queries. */
+  refetchMenusForBrand: (sub_brand_id: string) => Promise<void>;
   refetchBestSellers: (sub_brand_id: string) => Promise<void>;
 
   // Local state setters (for optimistic UI after server actions)
@@ -143,6 +145,52 @@ export function SubBrandProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // ── Batch: fetch sub-categories + ALL their menus in 2 queries ───────────
+  // This replaces the old N+1 pattern (one refetchMenus call per sub-category).
+  // Every sub-category slot is pre-filled with [] so `undefined` always means
+  // "not yet fetched" — never "fetched but somehow missing".
+  const refetchMenusForBrand = useCallback(async (sub_brand_id: string) => {
+    setIsLoadingCategories(true);
+    try {
+      // Query 1 — sub-categories
+      const { data: catData, error: catError } = await supabase
+        .from("sub_categories")
+        .select("*")
+        .eq("sub_brand_id", sub_brand_id)
+        .order("created_at", { ascending: true });
+
+      if (catError || !catData) return;
+
+      const cats = catData as SubCategory[];
+      setSubCategories((prev) => ({ ...prev, [sub_brand_id]: cats }));
+
+      if (cats.length === 0) return;
+
+      // Query 2 — ALL menus for every sub-category in one round-trip
+      const catIds = cats.map((c) => c.id);
+      const { data: menuData, error: menuError } = await supabase
+        .from("menus")
+        .select("*")
+        .in("sub_category_id", catIds)
+        .order("created_at", { ascending: true });
+
+      if (menuError) return;
+
+      // Pre-fill every sub-cat with [] (marks as "fetched"), then populate
+      const grouped: Record<string, Menu[]> = {};
+      for (const cat of cats) {
+        grouped[cat.id] = [];
+      }
+      for (const item of menuData ?? []) {
+        grouped[item.sub_category_id]?.push(item as Menu);
+      }
+
+      setMenus((prev) => ({ ...prev, ...grouped }));
+    } finally {
+      setIsLoadingCategories(false);
+    }
+  }, []);
+
   // ── Fetch best sellers for a specific sub-brand ───────────────────────────
   const refetchBestSellers = useCallback(async (sub_brand_id: string) => {
     const { data, error } = await supabase
@@ -175,6 +223,7 @@ export function SubBrandProvider({ children }: { children: ReactNode }) {
         refetchSubBrands,
         refetchSubCategories,
         refetchMenus,
+        refetchMenusForBrand,
         refetchBestSellers,
         setSubBrands,
         setSubCategories,
