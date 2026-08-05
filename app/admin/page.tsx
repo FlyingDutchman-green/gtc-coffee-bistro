@@ -26,6 +26,7 @@ import {
   useTransition,
 } from "react";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Cropper from "react-easy-crop";
 import getCroppedImg from "@/lib/cropImage";
@@ -714,13 +715,13 @@ function SubBrandModal({ editing, onClose, onSaved }: SubBrandModalProps) {
 // Delete Sub-Brand Confirmation Dialog
 // Destructive — warns about cascading data loss.
 // ══════════════════════════════════════════════════════════════════════════════
-interface DeleteSubBrandDialogProps {
-  brand: SubBrand;
+interface DeleteConfirmDialogProps {
+  target: { type: "sub_brand" | "category" | "item"; id: string; name: string };
   onCancel: () => void;
   onConfirm: () => Promise<void>;
 }
 
-function DeleteSubBrandDialog({ brand, onCancel, onConfirm }: DeleteSubBrandDialogProps) {
+function DeleteConfirmDialog({ target, onCancel, onConfirm }: DeleteConfirmDialogProps) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
@@ -737,8 +738,15 @@ function DeleteSubBrandDialog({ brand, onCancel, onConfirm }: DeleteSubBrandDial
 
   useBodyScrollLock(true);
 
+  const typeLabel = target.type === "sub_brand" ? "Sub-Brand" : target.type === "category" ? "Kategori" : "Menu";
+  const warningText = target.type === "sub_brand"
+    ? "Apakah Anda yakin ingin menghapus sub-brand ini? Semua kategori, menu, dan best seller di dalamnya akan terhapus permanen."
+    : target.type === "category"
+    ? "Apakah Anda yakin ingin menghapus kategori ini? Semua menu di dalamnya akan terhapus permanen."
+    : "Apakah Anda yakin ingin menghapus menu ini? Tindakan ini tidak dapat dibatalkan.";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto min-h-screen">
+    <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto min-h-screen">
       <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col overflow-y-auto rounded-xl p-6 bg-[#1a1a1a] border border-red-500/30 shadow-2xl gap-5">
         {/* Header */}
         <div className="flex items-start gap-3">
@@ -748,16 +756,16 @@ function DeleteSubBrandDialog({ brand, onCancel, onConfirm }: DeleteSubBrandDial
             </svg>
           </div>
           <div>
-            <h2 className="text-base font-bold text-crema-50">Hapus Sub-Brand?</h2>
+            <h2 className="text-base font-bold text-crema-50">Hapus {typeLabel}?</h2>
             <p className="text-xs text-crema-300/60 mt-0.5">
-              <span className="text-amber-bistro font-semibold">{brand.name}</span>
+              <span className="text-amber-bistro font-semibold">{target.name}</span>
             </p>
           </div>
         </div>
 
         {/* Warning body */}
         <p className="text-sm text-crema-300/80 leading-relaxed bg-red-500/8 border border-red-500/20 rounded-xl px-4 py-3">
-          Apakah Anda yakin ingin menghapus sub-brand ini? Semua kategori, menu, dan best seller di dalamnya akan terhapus permanen.
+          {warningText}
         </p>
 
         {error && (
@@ -1054,6 +1062,7 @@ interface SubCategorySectionProps {
   onRefetchBestSellers: () => void;   // called after toggle
   showAddCat: boolean;
   setShowAddCat: (val: boolean) => void;
+  onRequestDelete: (target: { type: "category" | "item"; id: string; name: string; parentId?: string }) => void;
 }
 
 function SubCategorySection({
@@ -1066,6 +1075,7 @@ function SubCategorySection({
   onRefetchBestSellers,
   showAddCat,
   setShowAddCat,
+  onRequestDelete,
 }: SubCategorySectionProps) {
   const { showToast, toast, dismissToast } = useToast();
 
@@ -1147,10 +1157,7 @@ function SubCategorySection({
   };
 
   const handleDeleteCat = async (id: string, name: string) => {
-    if (!confirm(`Hapus sub-kategori "${name}" beserta semua menu-nya?`)) return;
-    const result = await deleteSubCategory(id);
-    if (!result.success) { alert(result.error); return; }
-    onRefetchCategories();
+    onRequestDelete({ type: "category", id, name });
   };
 
   const handleSaveMenu = async (subCatId: string) => {
@@ -1188,10 +1195,7 @@ function SubCategorySection({
   };
 
   const handleDeleteMenu = async (menu: Menu) => {
-    if (!confirm(`Hapus menu "${menu.name}"?`)) return;
-    const result = await deleteMenu(menu.id);
-    if (!result.success) { alert(result.error); return; }
-    onRefetchMenus(menu.sub_category_id);
+    onRequestDelete({ type: "item", id: menu.id, name: menu.name, parentId: menu.sub_category_id });
   };
 
   // ── Star toggle ──────────────────────────────────────────────────────────
@@ -1653,13 +1657,46 @@ export default function AdminDashboard() {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [showSubBrandModal, setShowSubBrandModal] = useState(false);
   const [editingBrand, setEditingBrand] = useState<SubBrand | null>(null);
-  const [deleteDialogBrand, setDeleteDialogBrand] = useState<SubBrand | null>(null);
+  
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: "sub_brand" | "category" | "item";
+    id: string;
+    name: string;
+    parentId?: string;
+  } | null>(null);
+
   const [showAddCat, setShowAddCat] = useState(false);
   const [subBrandKebabOpen, setSubBrandKebabOpen] = useState(false);
 
   const activeBrand = subBrands.find((b) => b.id === activeBrandId) ?? null;
   const activeCats = activeBrandId ? (subCategories[activeBrandId] ?? []) : [];
   const activeBestSellers = activeBrandId ? (bestSellers[activeBrandId] ?? []) : [];
+
+  const navRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isNavOpen) setIsNavOpen(false);
+    };
+    const handleClickOutside = (e: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) {
+        setIsNavOpen(false);
+      }
+    };
+    if (isNavOpen) {
+      document.addEventListener("keydown", handleKeyDown);
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isNavOpen]);
+
+  const mainNavItems = [
+    { id: "home", label: "Dashboard Menu", action: () => { setActiveTab("home"); setIsNavOpen(false); } },
+    { id: "bestseller", label: "Best Seller Manage", action: () => { setActiveTab("bestseller"); setIsNavOpen(false); } },
+  ];
 
   // ── Auth guard ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1700,18 +1737,38 @@ export default function AdminDashboard() {
     router.replace("/admin/login");
   };
 
-  const handleDeleteBrand = async (brand: SubBrand) => {
-    const result = await deleteSubBrand(brand.id);
+  const handleDeleteSubBrand = async (id: string) => {
+    const result = await deleteSubBrand(id);
     if (!result.success) throw new Error(result.error ?? "Gagal menghapus sub-brand.");
-    // ── Active-state fallback guard ───────────────────────────────────────────
-    // If the deleted brand was active, switch focus to the first remaining brand
-    // (or null if the list becomes empty) to prevent reading properties of undefined.
-    if (activeBrandId === brand.id) {
-      const remaining = subBrands.filter((b) => b.id !== brand.id);
+    if (activeBrandId === id) {
+      const remaining = subBrands.filter((b) => b.id !== id);
       setActiveBrandId(remaining.length > 0 ? remaining[0].id : null);
     }
-    setDeleteDialogBrand(null);
     refetchSubBrands();
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    const result = await deleteSubCategory(id);
+    if (!result.success) throw new Error(result.error ?? "Gagal menghapus kategori.");
+    if (activeBrandId) refetchSubCategories(activeBrandId);
+  };
+
+  const handleDeleteItem = async (id: string, parentId?: string) => {
+    const result = await deleteMenu(id);
+    if (!result.success) throw new Error(result.error ?? "Gagal menghapus menu.");
+    if (parentId) refetchMenus(parentId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.type === "sub_brand") {
+      await handleDeleteSubBrand(deleteTarget.id);
+    } else if (deleteTarget.type === "category") {
+      await handleDeleteCategory(deleteTarget.id);
+    } else if (deleteTarget.type === "item") {
+      await handleDeleteItem(deleteTarget.id, deleteTarget.parentId);
+    }
+    setDeleteTarget(null);
   };
 
   if (authLoading) {
@@ -1733,44 +1790,85 @@ export default function AdminDashboard() {
         <header className="mb-8 flex items-start justify-between">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-amber-bistro tracking-widest uppercase">Admin Dashboard</h1>
-            <p className="text-crema-300/60 mt-1 mb-3 text-sm">
+            <p className="text-crema-300/60 mt-1 text-sm">
               Login sebagai: <span className="text-crema-300">{user?.email}</span>
             </p>
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-2 text-sm font-medium text-crema-300 hover:text-red-400 transition-colors border border-white/10 hover:border-red-400/30 px-3 py-1.5 rounded-lg"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-              </svg>
-              Logout
-            </button>
           </div>
-          <div className="relative">
+          <div className="relative" ref={navRef}>
             <button
               onClick={() => setIsNavOpen(!isNavOpen)}
-              className="p-2 bg-white/5 border border-white/10 rounded-lg text-crema-300 hover:text-amber-bistro hover:border-amber-bistro/50 transition-colors"
+              className="p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-crema-300 hover:text-amber-500 hover:border-amber-500/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+              aria-label="Toggle navigation menu"
+              aria-expanded={isNavOpen}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+              {isNavOpen ? (
+                // Close ✕ icon
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                // Hamburger ☰ icon
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
+              )}
             </button>
-            {isNavOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
-                <button
-                  onClick={() => { setActiveTab("home"); setIsNavOpen(false); }}
-                  className={`w-full text-left px-4 py-3 text-sm font-bold tracking-wide transition-colors ${activeTab === "home" ? "bg-amber-bistro/10 text-amber-bistro" : "text-crema-50 hover:bg-white/5"}`}
+            <AnimatePresence>
+              {isNavOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="absolute right-0 mt-3 w-64 bg-zinc-900/95 backdrop-blur-md border border-zinc-800 rounded-xl shadow-2xl z-50 overflow-hidden origin-top-right"
                 >
-                  Home
-                </button>
-                <button
-                  onClick={() => { setActiveTab("bestseller"); setIsNavOpen(false); }}
-                  className={`w-full text-left px-4 py-3 text-sm font-bold tracking-wide transition-colors ${activeTab === "bestseller" ? "bg-amber-bistro/10 text-amber-bistro" : "text-crema-50 hover:bg-white/5"}`}
-                >
-                  Best Seller Manage
-                </button>
-              </div>
-            )}
+                  <div className="flex flex-col py-2">
+                    {mainNavItems.map((item) => {
+                      const isActive = activeTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={item.action}
+                          className={`w-full text-left px-5 py-3 text-sm font-bold tracking-wide transition-colors flex items-center gap-3 ${
+                            isActive
+                              ? "bg-amber-500/10 text-amber-500"
+                              : "text-crema-50 hover:bg-zinc-800 hover:text-amber-400"
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex flex-col border-t border-zinc-800 py-2">
+                    <button
+                      onClick={() => {
+                        window.open("/", "_blank");
+                        setIsNavOpen(false);
+                      }}
+                      className="w-full text-left px-5 py-3 text-sm font-bold tracking-wide text-crema-50 hover:bg-zinc-800 hover:text-amber-400 transition-colors flex items-center gap-3"
+                    >
+                      Lihat Website (Home)
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 ml-auto opacity-50">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setIsNavOpen(false);
+                      }}
+                      className="w-full text-left px-5 py-3 text-sm font-bold tracking-wide text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors flex items-center gap-3"
+                    >
+                      Logout
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-4 h-4 ml-auto">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                      </svg>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </header>
 
@@ -1893,7 +1991,7 @@ export default function AdminDashboard() {
                               </button>
                               <button
                                 onClick={() => {
-                                  setDeleteDialogBrand(activeBrand);
+                                  setDeleteTarget({ type: "sub_brand", id: activeBrand.id, name: activeBrand.name });
                                   setSubBrandKebabOpen(false);
                                 }}
                                 className="w-full text-left px-4 py-3 text-sm font-bold tracking-wide text-red-400 hover:bg-red-400/10 transition-colors flex items-center gap-2 border-t border-white/5"
@@ -1920,6 +2018,7 @@ export default function AdminDashboard() {
                       onRefetchBestSellers={() => refetchBestSellers(activeBrandId ?? "")}
                       showAddCat={showAddCat}
                       setShowAddCat={setShowAddCat}
+                      onRequestDelete={(target) => setDeleteTarget(target)}
                     />
                   </div>
                 )}
@@ -1968,11 +2067,11 @@ export default function AdminDashboard() {
         />
       )}
 
-      {deleteDialogBrand && (
-        <DeleteSubBrandDialog
-          brand={deleteDialogBrand}
-          onCancel={() => setDeleteDialogBrand(null)}
-          onConfirm={() => handleDeleteBrand(deleteDialogBrand)}
+      {deleteTarget && (
+        <DeleteConfirmDialog
+          target={deleteTarget}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={handleConfirmDelete}
         />
       )}
 

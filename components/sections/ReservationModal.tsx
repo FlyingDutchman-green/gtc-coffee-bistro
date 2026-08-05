@@ -149,7 +149,7 @@ export function ReservationModal() {
               value={formData.guests}
               onChange={(e) => setFormData({ ...formData, guests: e.target.value })}
               className="w-full bg-espresso-950/50 border border-crema-50/20 rounded-lg px-4 py-2.5 text-crema-50 text-sm focus:outline-none focus:border-amber-bistro focus:ring-1 focus:ring-amber-bistro transition-colors placeholder:text-crema-300/30"
-              placeholder="e.g., 4 orang / Rombongan"
+              placeholder="contoh : 5 orang"
             />
           </div>
 
