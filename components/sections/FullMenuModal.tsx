@@ -231,7 +231,7 @@ export function FullMenuModal({
 
           {/* ── Brand Tab Navigation (one tab per sub_brand row in Supabase) ──── */}
           <div
-            className="flex flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scrollbar-none scroll-smooth border-b border-crema-50/10 bg-[#151515] shrink-0"
+            className="flex flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scrollbar-none scroll-smooth [-webkit-overflow-scrolling:touch] border-b border-crema-50/10 bg-[#151515] shrink-0"
             role="tablist"
             aria-label="Sub-brand menu categories"
           >
@@ -282,16 +282,16 @@ export function FullMenuModal({
           </div>
 
           {/* ── Sub-category sections + menu items ────────────────────────────── */}
-          <div className="px-6 pb-4 overflow-y-auto flex-1 min-h-[350px] flex flex-col scrollbar-none">
+          <div className="px-6 pb-4 overflow-y-auto flex-1 min-h-[350px] flex flex-col scrollbar-none overscroll-contain [overflow-anchor:none]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeBrandId || "empty"}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.12, ease: "easeInOut" }}
                 layout={false}
-                className="flex flex-col"
+                className="flex flex-col transform-gpu will-change-[opacity,transform]"
               >
                 {/* Overall loading state: batch fetch in progress, no cats yet */}
                 {isLoadingCategories ? (
