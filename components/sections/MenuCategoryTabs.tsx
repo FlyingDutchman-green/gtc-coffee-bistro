@@ -55,9 +55,9 @@ const cardVariant = {
 };
 
 const panelVariant = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.38, ease: [0.22, 1, 0.36, 1] as const } },
-  exit: { opacity: 0, y: 8, transition: { duration: 0.22, ease: "easeIn" as const } },
+  hidden: { opacity: 0, x: 20 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] as const } },
+  exit: { opacity: 0, x: -20, transition: { duration: 0.2, ease: "easeIn" as const } },
 };
 
 /* ── Peta ikon kategori (SVG sebaris — tanpa font ikon, tanpa permintaan HTTP ekstra) ── */
@@ -267,7 +267,7 @@ function ItemPanel({ category, panelId, onOpenFullMenu, allBestSellers = [] }: P
       {/* Header panel */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <p className="mb-1 text-[10px] tracking-[0.2em] uppercase text-amber-bistro font-medium">
+          <p className="mb-1 text-[10px] tracking-[0.2em] uppercase text-[#D4A373] font-medium">
             Best Sellers
           </p>
           <h3 className="font-serif text-2xl font-bold text-crema-50">
@@ -286,7 +286,7 @@ function ItemPanel({ category, panelId, onOpenFullMenu, allBestSellers = [] }: P
               {item.name}
             </span>
             <div className="flex-1 border-b-[1.5px] border-dotted border-white/20 mb-[5px] opacity-60 transition-opacity group-hover:opacity-100" />
-            <span className="text-[14px] font-bold font-mono text-amber-bistro">
+            <span className="text-[14px] font-bold font-mono text-[#D4A373]">
               {item.price}
             </span>
           </div>
@@ -337,7 +337,7 @@ function ItemPanel({ category, panelId, onOpenFullMenu, allBestSellers = [] }: P
               <p className="text-xs leading-relaxed text-crema-300/60 line-clamp-2">
                 {item.description}
               </p>
-              <span className="mt-auto pt-2 text-sm font-bold text-amber-bistro font-mono">
+              <span className="mt-auto pt-2 text-sm font-bold text-[#D4A373] font-mono">
                 {item.price}
               </span>
             </div>
@@ -545,6 +545,7 @@ export function MenuCategoryTabs({ categories, allBestSellers = [] }: MenuCatego
               category={selectedCategory}
               panelId={fullPanelId}
               onOpenFullMenu={handleOpenFullMenu}
+              allBestSellers={allBestSellers}
             />
           )}
         </AnimatePresence>

@@ -65,18 +65,28 @@ const heightWrapperVariants = {
   },
 };
 
-// ── TIER 2: Inner content cross-fade — smooth swap on brand switch ──────────
+// ── TIER 2: Inner content cross-fade — smooth horizontal slide on brand switch
 const contentFadeVariants = {
-  initial: { opacity: 0, y: 6 },
+  initial: { opacity: 0, x: 20 },
   animate: {
     opacity: 1,
-    y: 0,
-    transition: { duration: 0.2 },
+    x: 0,
+    transition: { duration: 0.25, ease: "easeOut" as const },
   },
   exit: {
     opacity: 0,
-    y: -6,
-    transition: { duration: 0.2 },
+    x: -20,
+    transition: { duration: 0.25, ease: "easeIn" as const },
+  },
+};
+
+// ── Section header scroll-in variant ──────────────────────────────────────────
+const sectionHeaderVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" as const },
   },
 };
 
@@ -592,11 +602,17 @@ export default function MenuGrid() {
         />
 
         <div className="relative mx-auto max-w-7xl px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32">
-          {/* Section header */}
-          <div className="flex flex-col gap-6 mb-12 md:flex-row md:justify-between md:items-end lg:mb-16">
+          {/* Section header — scroll-triggered entry */}
+          <motion.div
+            className="flex flex-col gap-6 mb-12 md:flex-row md:justify-between md:items-end lg:mb-16"
+            variants={sectionHeaderVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+          >
             <div className="flex flex-col gap-3">
-              <span className="inline-flex items-center gap-2 text-amber-bistro text-xs tracking-[0.25em] uppercase font-medium">
-                <span className="inline-block h-px w-6 bg-amber-bistro" aria-hidden="true" />
+              <span className="inline-flex items-center gap-2 text-[#D4A373] text-xs tracking-[0.25em] uppercase font-medium">
+                <span className="inline-block h-px w-6 bg-[#D4A373]" aria-hidden="true" />
                 What We Serve
               </span>
               <h2
@@ -604,7 +620,7 @@ export default function MenuGrid() {
                 className="font-serif text-4xl font-bold leading-tight tracking-tight text-crema-50 sm:text-5xl"
               >
                 Seven Reasons to{" "}
-                <span className="font-serif text-amber-500">
+                <span className="font-serif text-amber-500/90">
                   Stay Longer
                 </span>
               </h2>
@@ -617,7 +633,7 @@ export default function MenuGrid() {
             <div className="shrink-0">
               <a
                 href="#menu-full"
-                className="group inline-flex items-center gap-2 rounded-full border border-amber-bistro/40 px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-amber-bistro transition-all duration-300 hover:border-amber-bistro hover:bg-amber-bistro/10 hover:shadow-[0_0_20px_-4px_rgba(212,146,78,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-bistro focus-visible:ring-offset-2 focus-visible:ring-offset-espresso-950"
+                className="group inline-flex items-center gap-2 rounded-full border border-amber-bistro/40 px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#D4A373] transition-all duration-300 hover:border-amber-bistro hover:bg-amber-bistro/10 hover:shadow-[0_0_20px_-4px_rgba(212,146,78,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-bistro focus-visible:ring-offset-2 focus-visible:ring-offset-espresso-950"
                 aria-label="View the full menu"
               >
                 Full Menu
@@ -629,7 +645,7 @@ export default function MenuGrid() {
                 </span>
               </a>
             </div>
-          </div>
+          </motion.div>
 
           {/* Dynamic sub-brands grid + single best sellers panel */}
           <SubBrandsGrid />
