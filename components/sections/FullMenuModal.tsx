@@ -191,7 +191,7 @@ export function FullMenuModal({
 
         {/* Modal Box */}
         <div
-          className={`relative w-full max-w-2xl bg-[#121212] border border-amber-bistro/30 shadow-[0_0_40px_rgba(212,146,78,0.1)] rounded-2xl overflow-hidden flex flex-col transition-all duration-300 ease-out max-h-[85vh] md:h-[80vh] md:min-h-[450px] ${
+          className={`relative w-full max-w-2xl bg-[#121212] border border-amber-bistro/30 shadow-[0_0_40px_rgba(212,146,78,0.1)] rounded-2xl overflow-hidden flex flex-col transition-all duration-300 ease-out h-[85vh] ${
             show
               ? "opacity-100 scale-100 translate-y-0"
               : "opacity-0 scale-95 translate-y-4"
@@ -282,14 +282,14 @@ export function FullMenuModal({
           </div>
 
           {/* ── Sub-category sections + menu items ────────────────────────────── */}
-          <div className="px-6 pb-4 overflow-y-auto flex-1 min-h-[350px] flex flex-col scrollbar-none overscroll-contain [overflow-anchor:none]">
+          <div className="px-6 pb-4 overflow-y-auto flex-1 min-h-0 flex flex-col scrollbar-none overscroll-contain [overflow-anchor:none] [-webkit-overflow-scrolling:touch]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeBrandId || "empty"}
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.12, ease: "easeInOut" }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
                 layout={false}
                 className="flex flex-col transform-gpu will-change-[opacity,transform]"
               >

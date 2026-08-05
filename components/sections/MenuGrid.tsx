@@ -67,16 +67,16 @@ const heightWrapperVariants = {
 
 // ── TIER 2: Inner content cross-fade — smooth horizontal slide on brand switch
 const contentFadeVariants = {
-  initial: { opacity: 0, x: 20 },
+  initial: { opacity: 0, x: 25 },
   animate: {
     opacity: 1,
     x: 0,
-    transition: { duration: 0.25, ease: "easeOut" as const },
+    transition: { duration: 0.3, ease: "easeOut" as const },
   },
   exit: {
     opacity: 0,
-    x: -20,
-    transition: { duration: 0.25, ease: "easeIn" as const },
+    x: -25,
+    transition: { duration: 0.3, ease: "easeIn" as const },
   },
 };
 
@@ -333,7 +333,7 @@ function BestSellersContent({
     <div className="rounded-2xl border border-amber-bistro/20 bg-espresso-800 overflow-hidden shadow-[0_0_40px_-8px_rgba(212,146,78,0.18)]">
       {/* ── Section Header ──────────────────────────────────────────────────── */}
       <div className="px-6 pt-6 pb-4 md:px-8 md:pt-8 border-b border-amber-bistro/10">
-        <p className="mb-1 text-[10px] tracking-[0.2em] uppercase text-amber-bistro font-medium">
+        <p className="mb-1 text-[10px] tracking-[0.2em] uppercase text-[#D4A373] font-medium">
           ✦ Best Sellers
         </p>
         <h3 className="font-serif text-2xl md:text-3xl font-bold text-crema-50 uppercase tracking-wide">
