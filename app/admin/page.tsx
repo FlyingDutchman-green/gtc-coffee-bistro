@@ -1077,7 +1077,6 @@ function SubCategorySection({
     setOpenCats((prev) => ({ ...prev, [id]: !isCatOpen(id) }));
 
   const bsCount = bestSellers.length;
-  const bsMenuNames = new Set(bestSellers.map((b) => b.name)); // for lookup (name-based match)
   // Better: match by name+price since we don't store menu_id in best_sellers
   const getBestSellerForMenu = (menu: Menu) =>
     bestSellers.find((b) => b.name === menu.name && b.price === menu.price) ?? null;
@@ -1651,6 +1650,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!activeBrandId && subBrands.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveBrandId(subBrands[0].id);
     }
   }, [subBrands, activeBrandId]);
