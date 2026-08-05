@@ -94,6 +94,22 @@ function useToast() {
   return { toast, showToast: show, dismissToast: dismiss };
 }
 
+let scrollLockCount = 0;
+function useBodyScrollLock(isOpen: boolean) {
+  useEffect(() => {
+    if (isOpen) {
+      scrollLockCount++;
+      document.body.style.overflow = "hidden";
+      return () => {
+        scrollLockCount--;
+        if (scrollLockCount === 0) {
+          document.body.style.overflow = "";
+        }
+      };
+    }
+  }, [isOpen]);
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // Reusable: Image Upload + Crop Field
 // ══════════════════════════════════════════════════════════════════════════════
@@ -126,6 +142,8 @@ function ImageUploadField({
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<{
     x: number; y: number; width: number; height: number;
   } | null>(null);
+
+  useBodyScrollLock(!!rawImage && !croppedAreaPixels);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -170,8 +188,8 @@ function ImageUploadField({
       />
 
       {rawImage && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#1e1e1e] border border-white/10 rounded-2xl overflow-hidden w-full max-w-lg shadow-2xl flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto min-h-screen">
+          <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col overflow-y-auto rounded-xl bg-[#1e1e1e] border border-white/10 shadow-2xl">
             <div className="p-4 border-b border-white/10">
               <h3 className="text-white font-medium tracking-wide">Potong Gambar</h3>
               <p className="text-crema-300/60 text-xs mt-1">Geser untuk mengatur area, gunakan slider untuk zoom.</p>
@@ -381,9 +399,11 @@ function SetBestSellerModal({ menu, subBrandId, onClose, onSaved }: SetBestSelle
   // Preview to show: custom crop > existing menu image
   const displayImage = customImagePreview ?? menu.image_url ?? null;
 
+  useBodyScrollLock(true);
+
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-      <div className="bg-[#1a1a1a] border border-amber-bistro/30 rounded-2xl w-full max-w-md shadow-2xl p-6 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto min-h-screen">
+      <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col overflow-y-auto rounded-xl p-6 bg-[#1a1a1a] border border-amber-bistro/30 shadow-2xl gap-5">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
@@ -523,8 +543,8 @@ function SetBestSellerModal({ menu, subBrandId, onClose, onSaved }: SetBestSelle
 
       {/* Cropper Modal overlay */}
       {rawImage && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#1e1e1e] border border-white/10 rounded-2xl overflow-hidden w-full max-w-lg shadow-2xl flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto min-h-screen">
+          <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col overflow-y-auto rounded-xl bg-[#1e1e1e] border border-white/10 shadow-2xl">
             <div className="p-4 border-b border-white/10">
               <h3 className="text-white font-medium tracking-wide">Potong Gambar Khusus Best Seller</h3>
               <p className="text-crema-300/60 text-xs mt-1">Sesuaikan area gambar dengan rasio 4:3 (Lanskap).</p>
@@ -636,9 +656,11 @@ function SubBrandModal({ editing, onClose, onSaved }: SubBrandModalProps) {
     }
   };
 
+  useBodyScrollLock(true);
+
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl flex flex-col gap-5 p-6 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto min-h-screen">
+      <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col overflow-y-auto rounded-xl p-6 bg-[#1a1a1a] border border-white/10 shadow-2xl gap-5">
         <div className="flex items-center justify-between">
           <h2 className="text-amber-bistro font-bold tracking-widest uppercase text-sm">
             {editing ? "Edit Sub-Brand" : "Tambah Sub-Brand"}
@@ -713,9 +735,11 @@ function DeleteSubBrandDialog({ brand, onCancel, onConfirm }: DeleteSubBrandDial
     }
   };
 
+  useBodyScrollLock(true);
+
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-[#1a1a1a] border border-red-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto min-h-screen">
+      <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col overflow-y-auto rounded-xl p-6 bg-[#1a1a1a] border border-red-500/30 shadow-2xl gap-5">
         {/* Header */}
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center">
@@ -784,6 +808,8 @@ function BestSellersPanel({ bestSellers, onRefetch }: BestSellersPanelProps) {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
+  useBodyScrollLock(!!deletingBs);
+
   const handleOpenEdit = (bs: BestSeller) => {
     setEditingId(bs.id);
     setEditForm({ description: bs.description, badge: bs.badge });
@@ -827,8 +853,8 @@ function BestSellersPanel({ bestSellers, onRefetch }: BestSellersPanelProps) {
     <div className="mt-2">
       {/* ── Delete Best Seller confirmation dialog ── */}
       {deletingBs && (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#1a1a1a] border border-amber-bistro/20 rounded-2xl w-full max-w-md shadow-2xl p-6 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto min-h-screen">
+          <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col overflow-y-auto rounded-xl p-6 bg-[#1a1a1a] border border-amber-bistro/20 shadow-2xl gap-5">
             {/* Header */}
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-bistro/10 flex items-center justify-center">
@@ -1081,6 +1107,8 @@ function SubCategorySection({
   const getBestSellerForMenu = (menu: Menu) =>
     bestSellers.find((b) => b.name === menu.name && b.price === menu.price) ?? null;
 
+  useBodyScrollLock(showAddCat || !!editCatId || !!addMenuFor || !!bsModal);
+
   const handleAddMenuFileSelect = useCallback((file: File) => {
     const url = URL.createObjectURL(file);
     setMenuForm((p) => ({ ...p, imageFile: file, imagePreview: url }));
@@ -1214,8 +1242,8 @@ function SubCategorySection({
 
       {/* ── Add Sub-Category Modal ── */}
       {showAddCat && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-md">
-          <div className="bg-[#1a1a1a] border border-amber-bistro/30 rounded-2xl w-full max-w-sm shadow-2xl flex flex-col gap-5 p-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto min-h-screen">
+          <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col overflow-y-auto rounded-xl p-6 bg-[#1a1a1a] border border-amber-bistro/30 shadow-2xl gap-5">
             {/* Header */}
             <div className="flex items-center justify-between">
               <h2 className="text-amber-bistro font-bold tracking-widest uppercase text-sm">Tambah Sub-Kategori</h2>
@@ -1351,8 +1379,8 @@ function SubCategorySection({
                   <div className="overflow-hidden">
                     {/* Add Menu Modal — rendered as global overlay when this category is active */}
                     {addMenuFor === cat.id && (
-                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-md">
-                        <div className="bg-[#1a1a1a] border border-amber-bistro/30 rounded-2xl w-full max-w-md shadow-2xl flex flex-col gap-5 p-6 max-h-[90vh] overflow-y-auto">
+                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto min-h-screen">
+                        <div className="relative w-full max-w-lg max-h-[85vh] flex flex-col overflow-y-auto rounded-xl p-6 bg-[#1a1a1a] border border-amber-bistro/30 shadow-2xl gap-5">
                           {/* Header */}
                           <div className="flex items-center justify-between">
                             <div>

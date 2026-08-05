@@ -17,7 +17,8 @@
  * actual item count visible in the admin dashboard.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { useSubBrand } from "@/context/SubBrandContext";
 import type { SubBrand, SubCategory, Menu } from "@/lib/types";
@@ -81,6 +82,7 @@ export function FullMenuModal({
   const [show, setShow] = useState(false);
   const [selectedItem, setSelectedItem] = useState<SelectedMenuItem | null>(null);
   const [detailShow, setDetailShow] = useState(false);
+  const tabsRef = useRef<Record<string, HTMLButtonElement | null>>({});
 
   /* ── Live data from SubBrandContext ─────────────────────────────────────── */
   const {
@@ -101,6 +103,8 @@ export function FullMenuModal({
   const activeCats: SubCategory[] = activeBrandId
     ? (subCategories[activeBrandId] ?? [])
     : [];
+
+  const isFetchingActiveBrand = activeBrandId ? subCategories[activeBrandId] === undefined : false;
 
   /**
    * Total item count — sum over all sub-categories of the active brand.
@@ -133,6 +137,17 @@ export function FullMenuModal({
     if (!activeBrandId || !isOpen) return;
     refetchMenusForBrand(activeBrandId);
   }, [activeBrandId, isOpen, refetchMenusForBrand]);
+
+  /* ── Auto-scroll active tab into view ───────────────────────────────────── */
+  useEffect(() => {
+    if (activeBrandId && tabsRef.current[activeBrandId]) {
+      tabsRef.current[activeBrandId]?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    }
+  }, [activeBrandId, isOpen]);
 
   /* ── Detail modal open animation ────────────────────────────────────────── */
   useEffect(() => {
@@ -176,7 +191,7 @@ export function FullMenuModal({
 
         {/* Modal Box */}
         <div
-          className={`relative w-full max-w-2xl bg-[#121212] border border-amber-bistro/30 shadow-[0_0_40px_rgba(212,146,78,0.1)] rounded-2xl overflow-hidden flex flex-col transition-all duration-300 ease-out ${
+          className={`relative w-full max-w-2xl bg-[#121212] border border-amber-bistro/30 shadow-[0_0_40px_rgba(212,146,78,0.1)] rounded-2xl overflow-hidden flex flex-col transition-all duration-300 ease-out max-h-[85vh] md:h-[80vh] md:min-h-[450px] ${
             show
               ? "opacity-100 scale-100 translate-y-0"
               : "opacity-0 scale-95 translate-y-4"
@@ -216,7 +231,7 @@ export function FullMenuModal({
 
           {/* ── Brand Tab Navigation (one tab per sub_brand row in Supabase) ──── */}
           <div
-            className="flex flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] border-b border-crema-50/10 bg-[#151515] shrink-0"
+            className="flex flex-nowrap overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scrollbar-none scroll-smooth border-b border-crema-50/10 bg-[#151515] shrink-0"
             role="tablist"
             aria-label="Sub-brand menu categories"
           >
@@ -234,6 +249,9 @@ export function FullMenuModal({
                 return (
                   <button
                     key={brand.id}
+                    ref={(el) => {
+                      tabsRef.current[brand.id] = el;
+                    }}
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => handleSelectTab(brand)}
@@ -259,14 +277,24 @@ export function FullMenuModal({
               {resolvedBrand?.name ?? ""}
             </span>
             <span className="text-[10px] text-crema-300/40 font-medium">
-              — {totalItems} item
+              — {isFetchingActiveBrand ? "memuat..." : `${totalItems} item`}
             </span>
           </div>
 
           {/* ── Sub-category sections + menu items ────────────────────────────── */}
-          <div className="px-6 pb-4 overflow-y-auto max-h-[60vh] flex flex-col">
-            {/* Overall loading state: batch fetch in progress, no cats yet */}
-            {isLoadingCategories && activeCats.length === 0 ? (
+          <div className="px-6 pb-4 overflow-y-auto flex-1 min-h-[350px] flex flex-col scrollbar-none">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeBrandId || "empty"}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.12, ease: "easeInOut" }}
+                layout={false}
+                className="flex flex-col"
+              >
+                {/* Overall loading state: batch fetch in progress, no cats yet */}
+                {isLoadingCategories ? (
               <div className="flex flex-col gap-3 py-4">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <div
@@ -275,6 +303,8 @@ export function FullMenuModal({
                   />
                 ))}
               </div>
+            ) : isFetchingActiveBrand ? (
+              null
             ) : activeCats.length === 0 ? (
               /* Brand has no sub-categories yet */
               <p className="py-8 text-center text-sm text-crema-300/40 italic">
@@ -335,7 +365,9 @@ export function FullMenuModal({
                   </div>
                 );
               })
-            )}
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>
