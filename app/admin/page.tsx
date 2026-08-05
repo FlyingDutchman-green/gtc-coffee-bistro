@@ -216,20 +216,22 @@ function ImageUploadField({
       )}
 
       {displaySrc ? (
-        <div className="relative w-full aspect-square overflow-hidden rounded-lg border border-white/10 group">
-          <Image
-            src={displaySrc}
-            alt="Preview"
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 400px"
-            unoptimized={displaySrc.startsWith("blob:")}
-          />
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center justify-center gap-2 w-max opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-            <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="bg-amber-bistro text-[#121212] text-xs font-bold px-3 py-1.5 rounded-md hover:bg-amber-bistro/90 disabled:opacity-50 shadow-[0_4px_12px_rgba(0,0,0,0.6)] whitespace-nowrap">
+        <div className="flex flex-col items-center w-full">
+          <div className="relative w-full aspect-square overflow-hidden rounded-lg border border-white/10">
+            <Image
+              src={displaySrc}
+              alt="Preview"
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 400px"
+              unoptimized={displaySrc.startsWith("blob:")}
+            />
+          </div>
+          <div className="flex items-center justify-center gap-2 my-3 w-full">
+            <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="bg-amber-bistro text-[#121212] text-xs font-bold px-4 py-2 rounded-md hover:bg-amber-bistro/90 disabled:opacity-50 transition-colors whitespace-nowrap">
               Ganti Foto
             </button>
-            <button type="button" onClick={onClear} disabled={uploading} className="bg-red-500/80 text-white text-xs font-bold px-3 py-1.5 rounded-md hover:bg-red-500 disabled:opacity-50 shadow-[0_4px_12px_rgba(0,0,0,0.6)] whitespace-nowrap">
+            <button type="button" onClick={onClear} disabled={uploading} className="bg-red-500/80 text-white text-xs font-bold px-4 py-2 rounded-md hover:bg-red-500 disabled:opacity-50 transition-colors whitespace-nowrap">
               Hapus
             </button>
           </div>
@@ -1000,12 +1002,6 @@ function BestSellersPanel({ bestSellers, onRefetch }: BestSellersPanelProps) {
                       >
                         Edit Detail
                       </button>
-                      <button
-                        onClick={() => { setDeleteError(""); setDeletingBs(bs); }}
-                        className="text-red-400 hover:text-red-300 text-xs font-medium"
-                      >
-                        Hapus
-                      </button>
                     </div>
                   </div>
                 )}
@@ -1030,6 +1026,8 @@ interface SubCategorySectionProps {
   onRefetchCategories: () => void;
   onRefetchMenus: (subCatId: string) => void;
   onRefetchBestSellers: () => void;   // called after toggle
+  showAddCat: boolean;
+  setShowAddCat: (val: boolean) => void;
 }
 
 function SubCategorySection({
@@ -1040,10 +1038,11 @@ function SubCategorySection({
   onRefetchCategories,
   onRefetchMenus,
   onRefetchBestSellers,
+  showAddCat,
+  setShowAddCat,
 }: SubCategorySectionProps) {
   const { showToast, toast, dismissToast } = useToast();
 
-  const [showAddCat, setShowAddCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [catSaving, setCatSaving] = useState(false);
   const [catError, setCatError] = useState("");
@@ -1273,19 +1272,6 @@ function SubCategorySection({
       )}
 
       <div className="space-y-2">
-        {/* ── Add Sub Category trigger ── */}
-        <div className="mb-5">
-          <button
-            onClick={() => setShowAddCat(true)}
-            className="flex items-center gap-2 text-sm font-bold text-crema-300 hover:text-amber-bistro border border-white/10 hover:border-amber-bistro/30 px-4 py-2 rounded-lg transition-all duration-200"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            Tambah Sub-Kategori
-          </button>
-        </div>
-
         {/* ── Best seller quota bar (visible in Menu tab) ── */}
         <div className="flex items-center gap-2 mb-4 px-1">
           <span className="text-[10px] text-crema-300/40 uppercase tracking-wider">Kuota Best Seller:</span>
@@ -1636,10 +1622,13 @@ export default function AdminDashboard() {
   } = useSubBrand();
 
   const [activeBrandId, setActiveBrandId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"menu" | "bestsellers">("menu");
+  const [activeTab, setActiveTab] = useState<"home" | "bestseller">("home");
+  const [isNavOpen, setIsNavOpen] = useState(false);
   const [showSubBrandModal, setShowSubBrandModal] = useState(false);
   const [editingBrand, setEditingBrand] = useState<SubBrand | null>(null);
   const [deleteDialogBrand, setDeleteDialogBrand] = useState<SubBrand | null>(null);
+  const [showAddCat, setShowAddCat] = useState(false);
+  const [subBrandKebabOpen, setSubBrandKebabOpen] = useState(false);
 
   const activeBrand = subBrands.find((b) => b.id === activeBrandId) ?? null;
   const activeCats = activeBrandId ? (subCategories[activeBrandId] ?? []) : [];
@@ -1713,181 +1702,233 @@ export default function AdminDashboard() {
       <div className="max-w-6xl mx-auto p-4 sm:p-8">
 
         {/* ── HEADER ── */}
-        <header className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-amber-bistro tracking-widest uppercase">Admin Dashboard</h1>
-          <p className="text-crema-300/60 mt-1 mb-3 text-sm">
-            Login sebagai: <span className="text-crema-300">{user?.email}</span>
-          </p>
-          <button
-            onClick={handleLogout}
-            className="inline-flex items-center gap-2 text-sm font-medium text-crema-300 hover:text-red-400 transition-colors border border-white/10 hover:border-red-400/30 px-3 py-1.5 rounded-lg"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-            </svg>
-            Logout
-          </button>
-        </header>
-
-        {/* ── SUB-BRAND TABS ── */}
-        {isLoadingBrands ? (
-          <div className="flex items-center gap-2 py-4 text-crema-300/50">
-            <Spinner className="h-4 w-4 text-amber-bistro" />
-            <span className="text-sm">Memuat sub-brand...</span>
-          </div>
-        ) : subBrands.length === 0 ? (
-          <div className="bg-[#151515] border border-white/5 rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-4">
-            <p className="text-crema-300/50 text-sm">Belum ada sub-brand. Klik tombol di bawah untuk memulai.</p>
+        <header className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-amber-bistro tracking-widest uppercase">Admin Dashboard</h1>
+            <p className="text-crema-300/60 mt-1 mb-3 text-sm">
+              Login sebagai: <span className="text-crema-300">{user?.email}</span>
+            </p>
             <button
-              onClick={() => { setEditingBrand(null); setShowSubBrandModal(true); }}
-              className="flex items-center gap-2 text-sm font-bold text-[#121212] bg-amber-bistro hover:bg-amber-bistro/90 px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+              onClick={handleLogout}
+              className="inline-flex items-center gap-2 text-sm font-medium text-crema-300 hover:text-red-400 transition-colors border border-white/10 hover:border-red-400/30 px-3 py-1.5 rounded-lg"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
               </svg>
-              Tambah Sub Brand
+              Logout
             </button>
           </div>
-        ) : (
-          <>
-            {/* ── Sub-brand tab strip + action buttons: horizontally scrollable on mobile ── */}
-            <div className="overflow-x-auto whitespace-nowrap scrollbar-none border-b border-white/5 mb-6">
-              <div className="inline-flex items-center justify-between w-full min-w-max pb-1 gap-4">
-                {/* Tab strip */}
-                <div className="flex gap-1 flex-shrink-0">
-                  {subBrands.map((brand) => (
-                    <button
-                      key={brand.id}
-                      onClick={() => { setActiveBrandId(brand.id); setActiveTab("menu"); }}
-                      className={`px-4 py-2.5 rounded-t-lg text-xs font-bold tracking-widest uppercase transition-all whitespace-nowrap flex-shrink-0 ${
-                        activeBrandId === brand.id
-                          ? "bg-amber-bistro text-[#121212]"
-                          : "text-crema-300 hover:text-crema-50 hover:bg-white/5"
-                      }`}
-                    >
-                      {brand.name}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Inline action buttons — right of tabs */}
-                <div className="flex flex-shrink-0 items-center gap-2">
-                  {/* Edit active sub-brand */}
-                  <button
-                    id="btn-edit-sub-brand"
-                    onClick={() => {
-                      if (!activeBrand) return;
-                      setEditingBrand(activeBrand);
-                      setShowSubBrandModal(true);
-                    }}
-                    disabled={!activeBrand}
-                    title={activeBrand ? `Edit: ${activeBrand.name}` : "Pilih sub-brand terlebih dahulu"}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg border transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed text-blue-400 border-blue-400/25 bg-blue-400/8 hover:bg-blue-400/20 hover:border-blue-400/50"
-                  >
-                    {/* Edit3 icon */}
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-3.5 w-3.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-5" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    <span className="hidden sm:inline">Edit</span>
-                  </button>
-
-                  {/* Delete active sub-brand */}
-                  <button
-                    id="btn-delete-sub-brand"
-                    onClick={() => { if (activeBrand) setDeleteDialogBrand(activeBrand); }}
-                    disabled={!activeBrand}
-                    title={activeBrand ? `Hapus: ${activeBrand.name}` : "Pilih sub-brand terlebih dahulu"}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg border transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed text-red-400 border-red-400/25 bg-red-400/8 hover:bg-red-400/20 hover:border-red-400/50"
-                  >
-                    {/* Trash2 icon */}
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-3.5 w-3.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 11v6M14 11v6" />
-                    </svg>
-                    <span className="hidden sm:inline">Hapus</span>
-                  </button>
-
-                  {/* Add sub-brand */}
-                  <button
-                    id="btn-add-sub-brand"
-                    onClick={() => { setEditingBrand(null); setShowSubBrandModal(true); }}
-                    className="flex items-center justify-center gap-2 text-sm font-bold text-[#121212] bg-amber-bistro hover:bg-amber-bistro/90 px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    Tambah Sub Brand
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {activeBrand && (
-              <div className="bg-[#151515] border border-white/5 rounded-2xl p-5 sm:p-6">
-                {/* Brand info + sub-tab toggle */}
-                <div className="flex items-start justify-between gap-4 mb-5">
-                  <div className="flex items-center gap-3">
-                    {activeBrand.image_url && (
-                      <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                        <Image src={activeBrand.image_url} alt={activeBrand.name} fill className="object-cover" sizes="48px" />
-                      </div>
-                    )}
-                    <div>
-                      <h2 className="text-lg font-bold tracking-widest uppercase text-crema-50">{activeBrand.name}</h2>
-                      {activeBrand.description && (
-                        <p className="text-xs text-crema-300/50 mt-0.5 line-clamp-1">{activeBrand.description}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-start gap-1.5 flex-shrink-0">
-                    {(["menu", "bestsellers"] as const).map((tab) => (
-                      <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={`px-3 py-1.5 text-xs font-bold tracking-wider uppercase transition-colors rounded-lg border ${
-                          activeTab === tab ? "bg-amber-bistro text-[#121212] border-amber-bistro" : "text-crema-300/60 hover:text-crema-50 border-white/10 hover:border-white/20"
-                        }`}
-                      >
-                        {tab === "menu" ? "Menu" : (
-                          <span className="flex items-center gap-1">
-                            ★ Best Sellers
-                            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-mono ${
-                              activeBestSellers.length >= 3
-                                ? "bg-amber-bistro text-[#121212]"
-                                : "bg-white/10 text-crema-300"
-                            }`}>
-                              {activeBestSellers.length}/3
-                            </span>
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {activeTab === "menu" && (
-                  <SubCategorySection
-                    subBrandId={activeBrandId ?? ""}
-                    subCategories={activeCats}
-                    menus={menus}
-                    bestSellers={activeBestSellers}
-                    onRefetchCategories={() => refetchSubCategories(activeBrandId ?? "")}
-                    onRefetchMenus={refetchMenus}
-                    onRefetchBestSellers={() => refetchBestSellers(activeBrandId ?? "")}
-                  />
-                )}
-
-                {activeTab === "bestsellers" && (
-                  <BestSellersPanel
-                    subBrandId={activeBrandId ?? ""}
-                    bestSellers={activeBestSellers}
-                    onRefetch={() => refetchBestSellers(activeBrandId ?? "")}
-                  />
-                )}
+          <div className="relative">
+            <button
+              onClick={() => setIsNavOpen(!isNavOpen)}
+              className="p-2 bg-white/5 border border-white/10 rounded-lg text-crema-300 hover:text-amber-bistro hover:border-amber-bistro/50 transition-colors"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            {isNavOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <button
+                  onClick={() => { setActiveTab("home"); setIsNavOpen(false); }}
+                  className={`w-full text-left px-4 py-3 text-sm font-bold tracking-wide transition-colors ${activeTab === "home" ? "bg-amber-bistro/10 text-amber-bistro" : "text-crema-50 hover:bg-white/5"}`}
+                >
+                  Home
+                </button>
+                <button
+                  onClick={() => { setActiveTab("bestseller"); setIsNavOpen(false); }}
+                  className={`w-full text-left px-4 py-3 text-sm font-bold tracking-wide transition-colors ${activeTab === "bestseller" ? "bg-amber-bistro/10 text-amber-bistro" : "text-crema-50 hover:bg-white/5"}`}
+                >
+                  Best Seller Manage
+                </button>
               </div>
             )}
+          </div>
+        </header>
+
+        {activeTab === "home" ? (
+          <>
+            {isLoadingBrands ? (
+              <div className="flex items-center gap-2 py-4 text-crema-300/50">
+                <Spinner className="h-4 w-4 text-amber-bistro" />
+                <span className="text-sm">Memuat sub-brand...</span>
+              </div>
+            ) : subBrands.length === 0 ? (
+              <div className="bg-[#151515] border border-white/5 rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-4">
+                <p className="text-crema-300/50 text-sm">Belum ada sub-brand. Klik tombol di bawah untuk memulai.</p>
+                <button
+                  onClick={() => { setEditingBrand(null); setShowSubBrandModal(true); }}
+                  className="flex items-center gap-2 text-sm font-bold text-[#121212] bg-amber-bistro hover:bg-amber-bistro/90 px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Tambah Sub Brand
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* ── Sub-brand tab strip + action buttons: horizontally scrollable on mobile ── */}
+                <div className="overflow-x-auto whitespace-nowrap scrollbar-none border-b border-white/5 mb-6">
+                  <div className="inline-flex items-center justify-between w-full min-w-max pb-1 gap-4">
+                    {/* Tab strip */}
+                    <div className="flex gap-1 flex-shrink-0">
+                      {subBrands.map((brand) => (
+                        <button
+                          key={brand.id}
+                          onClick={() => { setActiveBrandId(brand.id); }}
+                          className={`px-4 py-2.5 rounded-t-lg text-xs font-bold tracking-widest uppercase transition-all whitespace-nowrap flex-shrink-0 ${
+                            activeBrandId === brand.id
+                              ? "bg-amber-bistro text-[#121212]"
+                              : "text-crema-300 hover:text-crema-50 hover:bg-white/5"
+                          }`}
+                        >
+                          {brand.name}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Inline action buttons — right of tabs */}
+                    <div className="flex flex-shrink-0 items-center gap-2">
+                      {/* Add sub-brand */}
+                      <button
+                        id="btn-add-sub-brand"
+                        onClick={() => { setEditingBrand(null); setShowSubBrandModal(true); }}
+                        className="flex items-center justify-center gap-2 text-sm font-bold text-[#121212] bg-amber-bistro hover:bg-amber-bistro/90 px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Tambah Sub Brand
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {activeBrand && (
+                  <div className="bg-[#151515] border border-white/5 rounded-2xl p-5 sm:p-6">
+                    {/* Brand info + action buttons */}
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 w-full mb-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {activeBrand.image_url && (
+                          <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                            <Image src={activeBrand.image_url} alt={activeBrand.name} fill className="object-cover" sizes="48px" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <h2 className="text-lg font-bold tracking-widest uppercase text-crema-50 truncate">{activeBrand.name}</h2>
+                          {activeBrand.description && (
+                            <p className="line-clamp-1 truncate text-xs text-neutral-400 mt-0.5">{activeBrand.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Actions: Tambah Sub Kategori & Kebab Menu */}
+                      <div className="flex items-center gap-2 w-full md:w-auto shrink-0 mt-1 md:mt-0">
+                        <button
+                          onClick={() => setShowAddCat(true)}
+                          className="flex-1 md:flex-initial flex items-center justify-center gap-2 text-sm font-bold text-crema-300 hover:text-amber-bistro border border-white/10 hover:border-amber-bistro/30 px-4 py-2 rounded-lg transition-all duration-200"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                          </svg>
+                          Tambah Sub-Kategori
+                        </button>
+                        
+                        <div className="relative">
+                          <button
+                            onClick={() => setSubBrandKebabOpen(!subBrandKebabOpen)}
+                            className="p-2 bg-white/5 border border-white/10 rounded-lg text-crema-300 hover:text-amber-bistro hover:border-amber-bistro/50 transition-colors"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
+                              <circle cx="12" cy="5" r="1" />
+                              <circle cx="12" cy="12" r="1" />
+                              <circle cx="12" cy="19" r="1" />
+                            </svg>
+                          </button>
+                          
+                          {subBrandKebabOpen && (
+                            <div className="absolute right-0 mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                              <button
+                                onClick={() => {
+                                  setEditingBrand(activeBrand);
+                                  setShowSubBrandModal(true);
+                                  setSubBrandKebabOpen(false);
+                                }}
+                                className="w-full text-left px-4 py-3 text-sm font-bold tracking-wide text-blue-400 hover:bg-blue-400/10 transition-colors flex items-center gap-2"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-5" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                                Edit Sub Brand
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setDeleteDialogBrand(activeBrand);
+                                  setSubBrandKebabOpen(false);
+                                }}
+                                className="w-full text-left px-4 py-3 text-sm font-bold tracking-wide text-red-400 hover:bg-red-400/10 transition-colors flex items-center gap-2 border-t border-white/5"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="h-4 w-4">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 11v6M14 11v6" />
+                                </svg>
+                                Hapus Sub Brand
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <SubCategorySection
+                      subBrandId={activeBrandId ?? ""}
+                      subCategories={activeCats}
+                      menus={menus}
+                      bestSellers={activeBestSellers}
+                      onRefetchCategories={() => refetchSubCategories(activeBrandId ?? "")}
+                      onRefetchMenus={refetchMenus}
+                      onRefetchBestSellers={() => refetchBestSellers(activeBrandId ?? "")}
+                      showAddCat={showAddCat}
+                      setShowAddCat={setShowAddCat}
+                    />
+                  </div>
+                )}
+              </>
+            )}
           </>
+        ) : (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+              <h2 className="text-xl font-bold text-amber-bistro tracking-widest uppercase">Best Seller Manage</h2>
+            </div>
+            
+            {subBrands.length === 0 ? (
+              <p className="text-crema-300/40 text-sm">Belum ada sub-brand.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-6">
+                {subBrands.map((brand) => (
+                  <div key={brand.id} className="bg-[#151515] border border-white/5 rounded-2xl p-5 sm:p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      {brand.image_url && (
+                        <div className="relative w-8 h-8 rounded-md overflow-hidden flex-shrink-0">
+                          <Image src={brand.image_url} alt={brand.name} fill className="object-cover" sizes="32px" />
+                        </div>
+                      )}
+                      <h3 className="text-lg font-bold text-crema-50 uppercase tracking-wider">{brand.name}</h3>
+                    </div>
+                    
+                    <BestSellersPanel
+                      subBrandId={brand.id}
+                      bestSellers={bestSellers[brand.id] || []}
+                      onRefetch={() => refetchBestSellers(brand.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
